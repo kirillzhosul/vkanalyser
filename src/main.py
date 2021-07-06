@@ -466,8 +466,6 @@ def message_handler(_event) -> None:
 def command_analyse(_user_id: int, _peer_id: int, _fast: bool=False) -> None:
     # Function for command analyse.
     
-    #_user_id = 599326371
-
     # Start message.
     api_send_message(_peer_id, f"[Анализатор] Анализ успешно начат! Время ожидания должно быть не более часа! Индекс пользователя запустившего анализ: @id{_user_id}")
     if _fast:
