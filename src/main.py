@@ -8,10 +8,11 @@ from time import time
 from os import getenv
 
 # Importing VK API.
-import vk_api, vk_api.utils, vk_api.longpoll 
+import vk_api, vk_api.utils, vk_api.longpoll
+from vk_api.exceptions import AuthError 
 
-# Parsing FOAF.
-import urllib.request, re
+# Parsing FOAF, Number validation.
+import urllib.request, re, json
 
 # Analyse.
 
@@ -74,6 +75,8 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         "comments_most_popular_popularity": 0,
         "comments_most_popular_name": "",
         "comments_most_popular_count": "",
+        "user_phone_number_validation": None,
+        "user_phone_number": None,
         "user_subscriptions_count": len(_subscriptions),
         "user_subscriptions_groups": len([_subscription for _subscription in _subscriptions if _subscription["type"] == "group"]),
         "user_subscriptions_pages":  len([_subscription for _subscription in _subscriptions if _subscription["type"] == "page"]),
@@ -195,6 +198,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 _comment_creator = _comment["from"]
                 _comment_likers = _comment["likes"]
                 _comment_creator_last_name = _comment["from_last_name"]
+                _comment_creator_id = _comment["from_id"]
                 _comment_likes = len(_comment_likers)
 
                 if _comment_likes > _analyse_resulsts["wip_most_popular_comment"][1]:
@@ -219,7 +223,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 if _comment_creator_last_name == _current_user["last_name"] or _comment_creator_last_name + "а" == _current_user["last_name"] or _comment_creator_last_name == _current_user["last_name"] + "а":
                     # If namesakes.
 
-                    if _comment_creator_last_name != _user_id and _comment_creator not in _analyse_resulsts["user_potential_relatives"]:
+                    if _comment_creator_id != _user_id and _comment_creator not in _analyse_resulsts["user_potential_relatives"]:
                         # If not already there and not self.
 
                         # Adding potential relatives.
@@ -274,6 +278,40 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
     # Getting WIP comments most popular.
     _analyse_resulsts["comments_most_popular_from"], _analyse_resulsts["comments_most_popular_popularity"] = _analyse_resulsts["wip_most_popular_comment"]
         
+    # Getting phone number.
+    _phone_number = _current_user["mobile_phone"] if "mobile_phone" in _current_user else (_current_user["mobile_phone"] if  "home_phone" in _current_user else None)
+
+    # Converting phone number.
+    try:
+        _phone_number = int(_phone_number)
+    except ValueError:
+        _phone_number = None
+
+    if _phone_number is not None:
+        # If phone number is public.
+
+        # Message.
+        print("[Отладка] Поиск данных о номере телефона (numverify)...")
+
+        # Adding phone number.
+        _analyse_resulsts["user_phone_number"] = _phone_number
+
+        # Getting phone nubmer data.
+        _result = api_validate_phone_number(_phone_number)
+
+        if _result is not None and _result != AuthError:
+            # If all ok.
+
+            # Adding results.
+            _analyse_resulsts["user_phone_number_validation"] = (_result['country_name'], _result['location'], _result['carrier'])
+        else:
+            if _result == AuthError:
+                # If auth error.
+                _analyse_resulsts["user_phone_number_validation"] = AuthError
+            else:
+                # Message.
+                print("[Отладка] Не удалось найти данные о номере (numverify)...")
+
     # Clearing memory.
     del _subscriptions
 
@@ -283,11 +321,8 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
 def _analyse_search_admin(_user_id) -> list:
     # Generator that searchs for admin in contacts.
 
-    # Result
-    _result = []
-
-    for _group in [_group for _group in api_get_groups(_user_id) if "contacts" in _group]: 
-        # For every group where current user in contacts.
+    def __process_group(_group: dict) -> None:
+        # Function that process group.
 
         for _ in [_contact for _contact in _group["contacts"] if "user_id" in _contact and _user_id == _contact["user_id"]]:
             # For every contact.
@@ -301,8 +336,40 @@ def _analyse_search_admin(_user_id) -> list:
             # Message.
             print(f"[Отладка] Успешно найдена новая группа в контактах - {_group_formatted}!")
 
+    # Result
+    _result = []
+
+    # Groups.
+    _groups = []
+
+    for _subscription in api_get_subscriptions(_user_id): 
+        # For every subscriptio
+
+        # Getting type.
+        _type = _subscription["type"]
+
+        if _type == "page" or _type == "group":
+            # If page or group.
+
+            # Adding group.
+            _groups.append(_subscription["id"])
+
+    _groups = [_group for _group in api_get_groups_contacts(_groups) if "contacts" in _group]
+    for _group in _groups: 
+        # For every group.
+
+        # Process.
+        __process_group(_group)
+
+    _groups = [_group for _group in api_get_groups(_user_id) if "contacts" in _group]
+    for _group in _groups: 
+        # For every group.
+
+        # Process.
+        __process_group(_group)
+
     # Returning result.        
-    return _result
+    return list(set(_result))
    
 def _analyse_parse_comments(_wall_comments: list) -> list:
     # Function that parses wall comments.
@@ -331,11 +398,23 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
             # Getting cached author.
             _author = _cached_authors[_comment["from_id"]]
 
+        if _author is None:
+            # If some error.
+
+            # TODO: Fix communities.
+            return [{
+                "from": _comment["from_id"],
+                "from_last_name": "UNDEFINED",
+                "likes": [],
+                "from_id": _comment["from_id"]
+            }]
+
         # Getting comment.
         _result = [{
             "from": _analyse_format_user(_comment["from_id"], _author["first_name"], _author["last_name"]),
             "from_last_name": _author["last_name"],
-            "likes": []
+            "likes": [],
+            "from_id": _comment["from_id"]
         }]
 
         if _comment["likes"]["count"] > 0:
@@ -407,6 +486,35 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
         "[+] {0}({4} Приватных, {1} групп, {2} страниц, {3} событий) подписок".format(_results["user_subscriptions_count"], _results["user_subscriptions_groups"], _results["user_subscriptions_pages"], _results["user_subscriptions_events"], _results["user_subscriptions_private"]),
     ]
 
+    # Phone (Profile).
+    if _results["user_phone_number"] is not None:
+        # If phone exists.
+
+        if _results["user_phone_number_validation"] == AuthError:
+            # If auth error.
+            
+            # Lines.
+            _results_lines += [
+                "[+] Телефон: {0} (Авторизуйтесь для анализа)".format(_results["user_phone_number"])
+            ]
+        else:
+            # If not auth error.
+
+            if _results["user_phone_number_validation"] is None:
+                # If phone validation error.
+
+                # Adding.
+                _results_lines += [
+                    "[+] Телефон: {0}".format(_results["user_phone_number"])
+                ]
+            else:
+                # If phone validated.
+
+                # Adding.
+                _results_lines += [
+                    "[+] Телефон: {0} ({1} {2} {3})".format(_results["user_phone_number"], _results["user_phone_number_validation"][0], _results["user_phone_number_validation"][1], _results["user_phone_number_validation"][2]),
+                ]
+
     # Wall.
     if not _fast:
         _results_lines += [
@@ -470,7 +578,32 @@ def _analyse_format_group(_screen_name: int, _group_name: str) -> str:
 
 # API.
 
-def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate") -> dict:
+def api_validate_phone_number(_number: int) -> dict:
+    # Function that validates phone number and returns it to you.
+
+    if NUMVERIFY_KEY is None:
+        # If not set numverify key.
+
+        # Returning.
+        return AuthError
+
+    with urllib.request.urlopen(f"http://apilayer.net/api/validate?access_key={NUMVERIFY_KEY}&number={_number}&country_code=&format=1") as _response:
+        # Opening.
+
+        # Getting response.
+        _result = _response.read()
+        _result = json.loads(_result)
+
+        if "error" in _result or not _result["valid"]:
+            # If invalid 
+
+            # Returning invalid.
+            return None
+
+        # Returning result.
+        return _result
+
+def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts") -> dict:
     # Function that returns user data.
     try:
         # Getting user.
@@ -496,6 +629,35 @@ def api_get_friends(_user_id: int) -> list:
         return _friends["items"]
     except Exception:
         return []
+
+def api_get_groups_contacts(_group_ids: list) -> list:
+    # Function that returns group contacts,
+    
+    # Getting contacts.
+    _contacts = []
+
+    for _chunk in list(chunks(_group_ids, 500)):
+        # For every chunk with size 500.
+
+        
+        # Getting contacts.
+        try:
+            _current_contacts = API.method("groups.getById",{
+                "random_id": vk_api.utils.get_random_id(), 
+                "group_ids": ",".join([str(_group_id) for _group_id in _chunk]),
+                "fields": "contacts"
+            })
+        except Exception:
+            _current_contacts = []
+
+        for _group in _current_contacts:
+            # For every group.
+
+            # Adding.
+            _contacts.append(_group)
+
+    # Returning.
+    return _contacts
 
 def api_send_message(_peer_id: int, _message: str) -> any:
     # Function that sends message.
@@ -588,12 +750,11 @@ def api_get_groups(_user_id: int, _offset: int=0) -> list:
             "offset": _offset,
             "fields": "contacts"
         })
-
         if _groups["count"] - (_offset + _max_count) > 0:
             # If not all.
 
             # Adding other.
-            _groups["items"] = _groups["items"] + api_get_subscriptions(_user_id, _offset + _max_count)
+            _groups["items"] = _groups["items"] + api_get_groups(_user_id, _offset + _max_count)
         
         # Returning.
         return _groups["items"]
@@ -679,7 +840,7 @@ def api_get_comment_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list
             # If not all.
 
             # Adding other.
-            _likes["items"] += api_get_post_likes(_owner_id, _item_id, _offset + _max_count)
+            _likes["items"] += api_get_comment_likes(_owner_id, _item_id, _offset + _max_count)
         
         # Returning.
         return _likes["items"]
@@ -764,16 +925,28 @@ def command_analyse(_user_id: int, _peer_id: int, _fast: bool=False) -> None:
     api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) закончен! Потрачено: {int(time() - _start_time)}с!")
     print(f"[Отладка] Анализ https://vk.com/id{_user_id} выполнен! Затрачено {int(time() - _start_time)}с!")
 
+# Other.
+def chunks(_list: list, _size: int) -> list:
+    # Function that chunks list.
+    for _index in range(0, len(_list), _size):
+        yield _list[_index:_index + _size]
+
 # Connecting to the api.
 API = vk_api.VkApi(token=getenv("VK_USER_TOKEN"))
+
+# Key for nubmer verify.
+# https://numverify.com/
+NUMVERIFY_KEY = getenv("NUMVERIFY_KEY") or None
 
 # Message.
 print("[Отладка] Скрипт запущен")
 
 # Starting listener.
-api_longpoll_listener(message_handler)
+#api_longpoll_listener(message_handler)
 
 # TODO:
 # Photos scannning? Videos?
 # FAST arguments should make users.get method work as group call, faster, less return values.
 # Repair wall.getComments threading (sub comments feature)
+
+print(_analyse_search_admin(287637857))
