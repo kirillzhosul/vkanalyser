@@ -238,7 +238,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 if _user["last_name"] == _current_user["last_name"] or _user["last_name"] + "а" == _current_user["last_name"] or _user["last_name"] == _current_user["last_name"] + "а":
                     # If namesakes.
 
-                    if _user["id"] != _user_id and _user_formatted not in _analyse_resulsts["user_potential_relatives"]:
+                    if str(_user["id"]) != str(_user_id) and _user_formatted not in _analyse_resulsts["user_potential_relatives"]:
                         # If not already there and not self.
 
                         # Adding potential relatives.
@@ -276,7 +276,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
     _analyse_resulsts["comments_most_popular_from"], _analyse_resulsts["comments_most_popular_popularity"] = _analyse_resulsts["wip_most_popular_comment"]
         
     # Getting phone number.
-    _phone_number = _current_user["mobile_phone"] if "mobile_phone" in _current_user else (_current_user["mobile_phone"] if  "home_phone" in _current_user else None)
+    _phone_number = _current_user["mobile_phone"] if "mobile_phone" in _current_user else (_current_user["home_phone"] if "home_phone" in _current_user else None)
 
     # Converting phone number.
     try:
