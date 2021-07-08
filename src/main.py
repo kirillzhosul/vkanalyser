@@ -1128,8 +1128,8 @@ def message_handler(_event) -> None:
 def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> None:
     # Function for command analyse.
     
-    # Fast mode (WIP, Disabled).
-    _fast = True
+    # Fast disabled by default.
+    _fast = False
 
     if len(_arguments) > 0:
         # If argument.
@@ -1137,6 +1137,12 @@ def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> None:
         # Getting user id.
         _user_id = _arguments[0]
 
+        if len(_arguments) > 1:
+            # If 2 arguments.
+
+            # Setting fast mode.
+            _fast = not _fast
+    
     # Start message.
     api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) успешно начат!" + (" (Быстрый режим, анализ друзей, стены отключён)" if _fast else ""))
     print(f"[Debug] Analysis https://vk.com/id{_user_id} started!")
@@ -1251,6 +1257,12 @@ def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> N
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор][Аккаунты] Результат для ника {_arguments[0]}:\n" + ",\n".join(_accounts))
 
+def command_help(_user_id: int, _peer_id: int, _arguments: list) -> None:
+    # Function for command help
+
+    # Returning.
+    return api_send_message(_peer_id, f"[Анализатор] Команды:\n!анализ [id] [any=fastmode],\n!номер number,\n!метод [pycode],\n!флуд,\n!аккаунты [nickname],\n!помощь")
+
 # Other.
 
 def chunks(_list: list, _size: int) -> list:
@@ -1272,6 +1284,7 @@ COMMANDS = {
     "!метод": command_api_method,
     "!флуд": command_flood,
     "!аккаунты": command_search_accounts,
+    "!помощь": command_help
 }
 
 # Message.
