@@ -2,10 +2,13 @@
 from collections import Counter
 
 # Importing time for measure time.
-from time import time
+from time import time, sleep
 
 # Import get env.
 from os import getenv
+
+# Importing random
+from random import randint
 
 # Importing VK API.
 import vk_api, vk_api.utils, vk_api.longpoll
@@ -20,25 +23,26 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
     # Function that analyses page.
 
     # Getting FOAF results.
-    print("[Отладка] Получение и парсинг FOAF данных (foaf.php)...")
+    print("[Debug][0] Loading user FOAF (foaf.php)...")
     _foaf_results = api_parse_user_foaf(_user_id)
 
     # Getting current user.
-    print("[Отладка] Получение основных данных пользователя (users.get)...")
+    print("[Debug][1] Loading user data...")
     _current_user = api_get_user(_user_id)
     _counters = _current_user["counters"]
 
     # Getting subscriptions.
-    print("[Отладка] Получение подписок пользователя (subscriptions.get)...")
+    print("[Debug][2] Loading user subscriptions...")
     _subscriptions = api_get_subscriptions(_user_id)
 
     # Getting friends IDs.
-    print("[Отладка] Получение списка друзей пользователя (friends.get)...")
+    print("[Debug][3] Loading friends list...")
     _friends_ids = api_get_friends(_user_id)
 
     # Analyse results.
-    print("[Отладка] Обработка полученных данных, создание словаря данных (dict)...")
+    print("[Debug][5] Making default analyse result...")
     _analyse_resulsts = {
+        "potential_links": [],
         "wip_names": [],
         "wip_likers": [],
         "wip_commentators": [],
@@ -78,7 +82,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         "user_phone_number_validation": None,
         "user_phone_number": None,
         "user_subscriptions_count": len(_subscriptions),
-        "user_subscriptions_groups": len([_subscription for _subscription in _subscriptions if _subscription["type"] == "group"]),
+        "user_subscriptions_groups": len(api_get_groups(_user_id)),
         "user_subscriptions_pages":  len([_subscription for _subscription in _subscriptions if _subscription["type"] == "page"]),
         "user_subscriptions_events":  len([_subscription for _subscription in _subscriptions if _subscription["type"] == "event"]),
         "user_subscriptions_private": len([_subscription for _subscription in _subscriptions if ("is_closed" in _subscription and _subscription["is_closed"])]),
@@ -97,14 +101,13 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         # If not fast mode.
 
         # Message.
-        _, _counter, _counted = print("[Отладка] Обработка каждого из друзей отдельно..."), 0, len(_friends_ids)
+        _, _counter, _counted = print("[Debug][6][0] Processing friends..."), 0, len(_friends_ids)
         for _friend_id in _friends_ids:
             # For every friend in friends ids.
 
             # Message.
             _counter += 1
-
-            print(f"[Отладка] Получение друга и обработка... ({_counter} из {_counted})")
+            print(f"[Debug][6][1] Processing friend... ({_counter} / {_counted})")
 
             # Getting friend data.
             _friend_data = api_get_user(_friend_id)
@@ -143,7 +146,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                     _analyse_resulsts["user_potential_relatives"].append(_user_formatted)
 
                     # Message.
-                    print(f"[Отладка] Успешно найден новый вероятный родственник {_user_formatted}!")
+                    print(f"[Debug][6][2] Found new potential relative {_user_formatted}!")
 
             # Counters etc.
             _analyse_resulsts["friends_closed"] += _friend_data["is_closed"]
@@ -163,19 +166,16 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         # If user is not closed and not fast.
 
         # Getting all wall posts.
-        print("[Отладка] Загрузка постов с страницы пользователя...")
         _wall_posts = api_get_wall_posts(_user_id)
 
         # Message.
-        if len(_wall_posts) != 0:
-            _, _counter, _counted = print("[Отладка] Обработка постов на стене..."), 0, len(_wall_posts)
-
+        _, _counter, _counted = print("[Debug][7][0] Processing wall posts..."), 0, len(_wall_posts)
         for _wall_post in _wall_posts:
             # For every post in wall.
 
             # Message.
             _counter += 1
-            print(f"[Отладка] Получение поста и его данных (wall.get, wall.getComments, likes.getList)... ({_counter} из {_counted})")
+            print(f"[Debug][7][1] Processing wall post... ({_counter} / {_counted})")
             
             # Analysing wall.
             _analyse_resulsts["user_wall_posts"] += 1
@@ -187,9 +187,6 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             # Getting likes and comments.
             _wall_likes = api_get_post_likes(_wall_post["owner_id"], _wall_post["id"])
             _wall_comments = api_get_post_comments(_wall_post["owner_id"], _wall_post["id"])
-
-            # Message.
-            print(f"[Отладка] Обработка комментариев и лайков поста... ({_counter} из {_counted})")
 
             for _comment in _analyse_parse_comments(_wall_comments):
                 # For every comment in parsed.
@@ -230,7 +227,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                         _analyse_resulsts["user_potential_relatives"].append(_comment_creator)
 
                         # Message.
-                        print(f"[Отладка] Успешно найден новый вероятный родственник {_comment_creator}!")
+                        print(f"[Debug][7][2][0] Found new potential relative {_comment_creator}!")
                     
             for _user in _wall_likes:
                 # For every user in wall likes.
@@ -248,31 +245,31 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                         _analyse_resulsts["user_potential_relatives"].append(_user_formatted)
 
                         # Message.
-                        print(f"[Отладка] Успешно найден новый вероятный родственник {_user_formatted}!")
+                        print(f"[Debug][7][2][1] Found new potential relative {_user_formatted}!")
                     
                 # Adding user as likers.
                 _analyse_resulsts["wip_likers"].append(_user_formatted)
 
     # Most popular name.
     if len(_analyse_resulsts["wip_names"]) != 0:
-        print("[Отладка] Поиск самого популярного имени в друзьях...")
+        print("[Debug][8][0] Searching most popular name in friends...")
         _analyse_resulsts["friends_most_popular_name"] = max(set(_analyse_resulsts["wip_names"]), key = _analyse_resulsts["wip_names"].count)
         _analyse_resulsts["friends_most_popular_name_count"] = _analyse_resulsts["wip_names"].count(_analyse_resulsts["friends_most_popular_name"])
 
     # Top liker name.
     if len(_analyse_resulsts["wip_likers"]) != 0:
-        print("[Отладка] Поиск самого популярного лайкера на стене...")
+        print("[Debug][8][1] Searching most popular liker on wall...")
         _analyse_resulsts["top_liker_name"] = max(set(_analyse_resulsts["wip_likers"]), key = _analyse_resulsts["wip_likers"].count)
         _analyse_resulsts["top_liker_count"] = _analyse_resulsts["wip_likers"].count(_analyse_resulsts["top_liker_name"])
     
     # Top commentator name.
     if len(_analyse_resulsts["wip_commentators"]) != 0:
-        print("[Отладка] Поиск самого популярного комментатора на стене...")
+        print("[Debug][8][2] Searching most popular commentator on wall...")
         _analyse_resulsts["comments_most_popular_name"] = max(set(_analyse_resulsts["wip_commentators"]), key = _analyse_resulsts["wip_commentators"].count)
         _analyse_resulsts["comments_most_popular_count"] = _analyse_resulsts["wip_commentators"].count(_analyse_resulsts["comments_most_popular_name"])
 
     # Deep admin search.
-    print("[Отладка] Поиск факта администрации в группах (groups.get)...")
+    print("[Debug][9] Searching for administrated group...")
     _analyse_resulsts["user_admin_groups"] = _analyse_search_admin(_user_id)
 
     # Getting WIP comments most popular.
@@ -284,14 +281,14 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
     # Converting phone number.
     try:
         _phone_number = int(_phone_number)
-    except ValueError:
+    except (ValueError, TypeError):
         _phone_number = None
 
     if _phone_number is not None:
         # If phone number is public.
 
         # Message.
-        print("[Отладка] Поиск данных о номере телефона (numverify)...")
+        print("[Debug][10][0] Searching for phone number data (Numverify)...")
 
         # Adding phone number.
         _analyse_resulsts["user_phone_number"] = _phone_number
@@ -302,6 +299,9 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         if _result is not None and _result != AuthError:
             # If all ok.
 
+            # Message.
+            print("[Debug][10][1] Founded phone number (Numverify)...")
+
             # Adding results.
             _analyse_resulsts["user_phone_number_validation"] = (_result['country_name'], _result['location'], _result['carrier'])
         else:
@@ -310,7 +310,26 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 _analyse_resulsts["user_phone_number_validation"] = AuthError
             else:
                 # Message.
-                print("[Отладка] Не удалось найти данные о номере (numverify)...")
+                print("[Debug][10][2] Not founded any data about this phone number (Numverify)...")
+
+    # Message.
+    print("[Debug][11] Searching accounts links...")
+
+    # Accounts search.
+    _analyse_resulsts["potential_links"] = api_search_accounts(_current_user["screen_name"])
+
+    for _group in _analyse_resulsts["user_admin_groups"]:
+        # For every group.
+
+        if str(_group[0]) in _group[1]:
+            # If default name.
+            continue
+
+        # Accounts search.
+        _analyse_resulsts["potential_links"] += api_search_accounts(_group[1])
+
+    # Getting only formatted.
+    _analyse_resulsts["user_admin_groups"] = [_group[2] for _group in _analyse_resulsts["user_admin_groups"]]
 
     # Clearing memory.
     del _subscriptions
@@ -324,6 +343,10 @@ def _analyse_search_admin(_user_id) -> list:
     def __process_group(_group: dict) -> None:
         # Function that process group.
 
+        # Return if invalid
+        if "contacts" not in _group:
+            return
+
         for _ in [_contact for _contact in _group["contacts"] if "user_id" in _contact and _user_id == _contact["user_id"]]:
             # For every contact.
 
@@ -331,10 +354,10 @@ def _analyse_search_admin(_user_id) -> list:
             _group_formatted = _analyse_format_group(_group["screen_name"], _group["name"])
 
             # Adding groups.
-            _result.append(_group_formatted)
+            _result.append((_group["id"], _group["screen_name"], _group_formatted))
 
             # Message.
-            print(f"[Отладка] Успешно найдена новая группа в контактах - {_group_formatted}!")
+            print(f"[Debug][Admin search] Found new group - {_group_formatted}!")
 
     # Result
     _result = []
@@ -342,24 +365,26 @@ def _analyse_search_admin(_user_id) -> list:
     # Groups.
     _groups = []
 
-    for _subscription in api_get_subscriptions(_user_id): 
-        # For every subscriptio
+    #for _subscription in api_get_subscriptions(_user_id): 
+    #    # For every subscriptio
+    #
+    #    # Getting type.
+    #    _type = _subscription["type"]
+    #
+    #    if _type == "page" or _type == "group":
+    #        # If page or group.
+    #
+    #        # Adding group.
+    #        _groups.append(_subscription["id"])
+    #
+    #_groups = [_group for _group in api_get_groups_contacts(_groups) if "contacts" in _group]
+    #for _group in _groups: 
+    #    # For every group.
+    #
+    #    # Process.
+    #    __process_group(_group)
 
-        # Getting type.
-        _type = _subscription["type"]
-
-        if _type == "page" or _type == "group":
-            # If page or group.
-
-            # Adding group.
-            _groups.append(_subscription["id"])
-
-    _groups = [_group for _group in api_get_groups_contacts(_groups) if "contacts" in _group]
-    for _group in _groups: 
-        # For every group.
-
-        # Process.
-        __process_group(_group)
+    # TODO: Should remove one of this loops?
 
     _groups = [_group for _group in api_get_groups(_user_id) if "contacts" in _group]
     for _group in _groups: 
@@ -368,8 +393,26 @@ def _analyse_search_admin(_user_id) -> list:
         # Process.
         __process_group(_group)
 
+    # Deleting repeating.
+    _result = list(set(_result))
+
+    for _group in _result:
+        # For every group.
+
+        for _link in [_link for _link in api_get_group_links(_group[0]) if "vk.com/" in _link["url"]]:
+            # For every link on vk.
+
+            # Getting screen name.
+            _screen_name = _link["url"].split("/")[-1]
+
+            # Checking admin there.
+            __process_group(api_get_groups_contacts([api_get_id_from_screen_name(_screen_name)])[0])
+
+    # Deleting repeating.
+    _result = list(set(_result))
+
     # Returning result.        
-    return list(set(_result))
+    return _result
    
 def _analyse_parse_comments(_wall_comments: list) -> list:
     # Function that parses wall comments.
@@ -464,7 +507,7 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
 
     # Result lines.
     _results_lines = [
-        "[+][Анализатор]",
+        "[+][Анализатор][Профиль пользователя]"
     ]
 
     # Profile.
@@ -483,7 +526,7 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
         "[+] {0} аудиозаписей".format(_results["user_audios"]) if _results["user_audios"] != 0 else "",
         "[+] {0} подарков".format(_results["user_gifts"]) if _results["user_gifts"] != 0 else "",
         "[+] {0} подписчиков".format(_results["user_followers"]) if _results["user_followers"] != 0 else "",
-        "[+] {0}({4} Приватных, {1} групп, {2} страниц, {3} событий) подписок".format(_results["user_subscriptions_count"], _results["user_subscriptions_groups"], _results["user_subscriptions_pages"], _results["user_subscriptions_events"], _results["user_subscriptions_private"]),
+        "[+] {0} ({4} Приватных, {1} групп, {2} страниц, {3} событий) подписок".format(_results["user_subscriptions_count"], _results["user_subscriptions_groups"], _results["user_subscriptions_pages"], _results["user_subscriptions_events"], _results["user_subscriptions_private"]),
     ]
 
     # Phone (Profile).
@@ -550,17 +593,31 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
         ]
 
     # Potential relativies.
-    _results_lines += [
-        "[--------] Родственники, Однофамильцы",
-        "[+] Вероятные сходства: {0}".format(", ".join(_results["user_potential_relatives"]) if len(_results["user_potential_relatives"]) > 0 else "Не найдено"),
-    ]
+    if len(_results["user_potential_relatives"]) > 0:
+        _results_lines += [
+            "[--------] Родственники, Однофамильцы",
+            "[+] Вероятные сходства: {0}".format(", ".join(_results["user_potential_relatives"]) if len(_results["user_potential_relatives"]) > 0 else "Не найдено"),
+        ]
 
     # Admin in groups.
-    _results_lines += [
-        "[--------] Управление",
-        "[+] Группы под управлением: {0}".format(", ".join(_results["user_admin_groups"]) if len(_results["user_admin_groups"]) > 0 else "Не найдено")
-    ]
+    if len(_results["user_admin_groups"]) > 0:
+        _results_lines += [
+            "[--------] Управление",
+            "[+] Группы под управлением: {0}".format(", ".join(_results["user_admin_groups"]) if len(_results["user_admin_groups"]) > 0 else "Не найдено")
+        ]
 
+    # Potential links
+    if len(_results["potential_links"]):
+        _results_lines += [
+            "[--------] Ссылки",
+            "" if len(_results["potential_links"]) > 0 else "Не найдено"
+        ]
+        for _link in _results["potential_links"]:
+            # For link.
+
+            # Adding.
+            _results_lines.append("[+] {1}".format(_link[0], _link[1]))
+        
     # Returning.
     return ",\n".join([_line for _line in _results_lines if _line != ""]) 
 
@@ -577,6 +634,126 @@ def _analyse_format_group(_screen_name: int, _group_name: str) -> str:
     return f"@{_screen_name}({_group_name})"
 
 # API.
+
+def api_get_id_from_screen_name(_screen_name: str) -> int:
+    # Function that returns id from screen name.
+
+    try:
+        # Getting id.
+        return API.method("utils.resolveScreenName",{
+            "random_id": vk_api.utils.get_random_id(), 
+            "screen_name": _screen_name, 
+        })["object_id"] 
+    except Exception:
+        return None
+
+def api_search_accounts(_nickname: str) -> list:
+    # Function that search for account in other social networks.
+
+    def __exists(_link: str, _timeout: int=2) -> bool:
+        # Function that check is 404 or not.
+
+        # Returning.
+        try:
+            return urllib.request.urlopen(urllib.request.Request(_link, headers = {'User-Agent': 'VK Analyser'}), timeout=_timeout).status != 404
+        except:
+            return False
+
+    def __instagram() -> str:
+        # Instagram account.
+        
+        # Getting url.
+        _url = f"https://www.instagram.com/{_nickname}/"
+
+        # Returning.
+        return ("Instagram", _url) if __exists(_url, 5) else None
+
+    def __facebook() -> str:
+        # Facebook account.
+        
+        # Getting url.
+        _url = f"https://www.facebook.com/{_nickname}/"
+
+        # Returning.
+        return ("Facebook", _url) if __exists(_url, 3) else None
+
+    def __tiktok() -> str:
+        # Tiktok account.
+
+        # Getting url.
+        _url = f"https://www.tiktok.com/@{_nickname}?"
+
+        # Returning.
+        return ("TikTok", _url) if __exists(_url, 5) else None
+
+    def __odnoklassniki() -> str:
+        # Odnoklassniki account.
+
+        # Getting url.
+        _url = f"https://ok.ru/{_nickname}"
+
+        # Returning.
+        return ("OK", _url) if __exists(_url, 2) else None
+
+    def __github() -> str:
+        # Github account.
+
+        # Getting url.
+        _url = f"https://github.com/{_nickname}"
+
+        # Returning.
+        return ("Github", _url) if __exists(_url, 4) else None
+    
+    def __steam() -> str:
+        # Steam account.
+
+        # Getting url.
+        _url = f"https://steamcommunity.com/id/{_nickname}"
+
+        # Returning.
+        return ("Steam", _url) if __exists(_url, 5) else None
+
+    def __twitter() -> str:
+        # Twitter account.
+
+        # Getting url.
+        _url = f"https://twitter.com/{_nickname}"
+
+        # Returning.
+        return ("Twitter", _url) if __exists(_url, 3) else None
+
+    def __twitch() -> str:
+        # Twitch account.
+
+        # Getting url.
+        _url = f"https://www.twitch.tv/{_nickname}"
+
+        # Returning.
+        return ("Twitch", _url) if __exists(_url, 2) else None
+
+    def __youtube() -> str:
+        # YouTube account.
+
+        # Getting url.
+        _url = f"https://www.youtube.com/user/{_nickname}"
+
+        # Returning.
+        return ("OK", _url) if __exists(_url, 2) else None
+
+    def __search() -> list:
+        # Function that searchs for accounts.
+
+        # Dont returns 404:
+        # __twitch(), __steam(), __twitter()
+
+        # Returning.
+        return [__tiktok(), __instagram(), __facebook(), __odnoklassniki(), __youtube(), __github()]
+
+    # Getting accounts.
+    _accounts = [_account for _account in __search() if _account is not None]
+
+    # Returning.
+    return _accounts
 
 def api_validate_phone_number(_number: int) -> dict:
     # Function that validates phone number and returns it to you.
@@ -603,7 +780,7 @@ def api_validate_phone_number(_number: int) -> dict:
         # Returning result.
         return _result
 
-def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts") -> dict:
+def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts, screen_name") -> dict:
     # Function that returns user data.
     try:
         # Getting user.
@@ -631,7 +808,7 @@ def api_get_friends(_user_id: int) -> list:
         return []
 
 def api_get_groups_contacts(_group_ids: list) -> list:
-    # Function that returns group contacts,
+    # Function that returns groups contacts
     
     # Getting contacts.
     _contacts = []
@@ -658,6 +835,19 @@ def api_get_groups_contacts(_group_ids: list) -> list:
 
     # Returning.
     return _contacts
+
+def api_get_group_links(_group_id: int) -> list:
+    # Function that returns group links
+    
+    # Getting links.
+    try:
+        return API.method("groups.getById",{
+            "random_id": vk_api.utils.get_random_id(), 
+            "group_id": _group_id,
+            "fields": "links"
+        })[0]["links"]
+    except Exception:
+        return []
 
 def api_send_message(_peer_id: int, _message: str) -> any:
     # Function that sends message.
@@ -817,6 +1007,39 @@ def api_get_post_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list:
     except Exception:
         return []
 
+def api_chat_create(_user_id: int, _title: str) -> None:
+    # Function that creates an new chat.
+
+    # Creating chat.
+    return API.method("messages.createChat", {
+        "user_ids": _user_id, 
+        "title": _title
+    })
+
+def api_chat_delete_history(_chat_id: int) -> None:
+    # Function that deletes chat history.
+
+    # Deleting.
+    return API.method("messages.deleteConversation", {
+        "user_id": _chat_id, 
+        "peer_id": 2000000000 + _chat_id
+    })
+
+def api_chat_remove_user(_chat_id: int, _user_id: int) -> None:
+    # Function that removes user from chat.
+
+    # Remvoing user.
+    return API.method("messages.removeChatUser", {
+        "chat_id": _chat_id, 
+        "user_id": _user_id
+    })
+
+def api_current_user_id() -> int:
+    # Function that returns current user id.
+    
+    # Returning ID.
+    return api_get_user(None, "")["id"]
+
 def api_get_comment_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list:
     # Function that returns post likes list.
 
@@ -884,33 +1107,39 @@ def api_get_post_comments(_owner_id: int, _item_id: int, _offset: int=0) -> list
 def message_handler(_event) -> None:
     # Function that handles message.
 
-    if _event.message.lower() == "анализ":
-        # If message starts with.
+    # Getting arguments.
+    _arguments = _event.message.lower().split(" ")
 
-        # Analyse.
-        command_analyse(_event.user_id, _event.peer_id)
-    elif _event.message.lower() == "анализ_быстрый":
-        # If message starts with.
+    # Getting command.
+    _command = _arguments[0]
 
-        # Analyse.
-        command_analyse(_event.user_id, _event.peer_id, True)
-    elif _event.message.lower().startswith("анализ_для"):
-        # If message starts with.
+    for _command_name, _command_function in COMMANDS.items():
+        if _command.startswith(_command_name):
+            # If commands exists.
 
-        # Analyse.
-        command_analyse(int(_event.message[len("анализ_для"):]), _event.peer_id)
-    elif _event.message.lower().startswith("анализ_быстрый_для"):
-        # If message starts with.
+            # Deleting command.
+            _arguments.pop(0)
 
-        # Analyse.
-        command_analyse(int(_event.message[len("анализ_быстрый_для"):]), _event.peer_id, True)
+            # Execute command.
+            _command_function(_event.user_id, _event.peer_id, _arguments)
 
-def command_analyse(_user_id: int, _peer_id: int, _fast: bool=False) -> None:
+# Commands.
+
+def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> None:
     # Function for command analyse.
     
+    # Fast mode (WIP, Disabled).
+    _fast = True
+
+    if len(_arguments) > 0:
+        # If argument.
+        
+        # Getting user id.
+        _user_id = _arguments[0]
+
     # Start message.
     api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) успешно начат!" + (" (Быстрый режим, анализ друзей, стены отключён)" if _fast else ""))
-    print(f"[Отладка] Анализ https://vk.com/id{_user_id}!")
+    print(f"[Debug] Analysis https://vk.com/id{_user_id} started!")
 
     # Getting start time.
     _start_time = time()
@@ -923,9 +1152,107 @@ def command_analyse(_user_id: int, _peer_id: int, _fast: bool=False) -> None:
 
     # End message.
     api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) закончен! Потрачено: {int(time() - _start_time)}с!")
-    print(f"[Отладка] Анализ https://vk.com/id{_user_id} выполнен! Затрачено {int(time() - _start_time)}с!")
+    print(f"[Debug] Analysis https://vk.com/id{_user_id} completed! Passed {int(time() - _start_time)}s!")
+
+def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list) -> None:
+    # Function for command that validates phone number.
+
+    if len(_arguments) > 0:
+        # If argument.
+        
+        # Getting phone.
+        _phone_number = _arguments[0]
+    else:
+        # Error.
+        return api_send_message(_peer_id, f"[Анализатор] Укажите номер телефона для анализа!")
+
+    # Converting phone number.
+    try:
+        _phone_number = int(_phone_number)
+    except (ValueError, TypeError):
+        return api_send_message(_peer_id, f"[Анализатор] Не корректный номер телефона!")
+
+    # Getting phone nubmer data.
+    _result = api_validate_phone_number(_phone_number)
+
+    if _result is not None and _result != AuthError:
+        # If all ok.
+
+        # Success.
+        return api_send_message(_peer_id, f"[Анализатор] Страна: {_result['country_name']},\n Локация: {_result['location']},\n Оператор: {_result['carrier']},\n")
+    else:
+        if _result == AuthError:
+            # Error.
+            return api_send_message(_peer_id, f"[Анализатор] Ошибка авторизации! Добавьте ключ в настройке!")
+        else:
+            # Error.
+            return api_send_message(_peer_id, f"[Анализатор] Не удалось найти ничего об этом номере!")
+
+def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> None:
+    # Function for command that executes vk method.
+
+    # Returning.
+    return api_send_message(_peer_id, f"[Анализатор] Результат - {eval(' '.join(_arguments))}!")
+
+def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> None:
+    # Function for command that floods with conversations.
+
+    # Iterations.
+    _iteration_size = 3
+    _iteration_count = 10
+    _sleep_time_min = 3
+    _sleep_time_max = 10
+
+    # Getting current user id.
+    _current_user_id = api_current_user_id()
+
+    # Message.
+    print("[Debug][Flood] Started!")
+
+    try:
+        for _ in range(_iteration_count):
+            for _ in range(_iteration_size):
+                # Creating new chat with this user.
+                _new_chat = api_chat_create(_user_id, f"Flood {randint(-9999999, +9999999)}")
+
+                # Removing users.
+                api_chat_remove_user(_new_chat, _user_id)
+                api_chat_remove_user(_new_chat, _current_user_id)
+
+                # Sending message.
+                api_send_message(2000000000 + _new_chat, "Flood Script by @kirillzhosul!")
+
+                # Deleting for self.
+                api_chat_delete_history(_new_chat)
+
+                # Message.
+                print(f"[Debug][Flood] New chat {_new_chat} created!")
+
+                # Sleeping.
+                sleep(_sleep_time_min)
+
+            # Sleeping.
+            sleep(_sleep_time_max)
+    except Exception as _exception:
+        return api_send_message(_peer_id, f"[Анализатор][Флуд] Ошибка: {_exception}")
+
+def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> None:
+    # Function for command that searchs accounts
+
+    if len(_arguments) == 0:
+        # If arguments is not passed.
+
+        # Returning.
+        return api_send_message(_peer_id, "[Анализатор][Аккаунты] Вы не указали ник для поиска!")
+
+    # Getting accounts.
+    _accounts = [_account[0] + " = " + _account[1] for _account in api_search_accounts(_arguments[0])]
+
+    # Returning.
+    return api_send_message(_peer_id, f"[Анализатор][Аккаунты] Результат для ника {_arguments[0]}:\n" + ",\n".join(_accounts))
 
 # Other.
+
 def chunks(_list: list, _size: int) -> list:
     # Function that chunks list.
     for _index in range(0, len(_list), _size):
@@ -935,16 +1262,35 @@ def chunks(_list: list, _size: int) -> list:
 API = vk_api.VkApi(token=getenv("VK_USER_TOKEN"))
 
 # Key for nubmer verify.
-# https://numverify.com/
-NUMVERIFY_KEY = getenv("NUMVERIFY_KEY") or None
+# You may get this there: https://numverify.com/
+NUMVERIFY_KEY = getenv("NUMVERIFY_KEY")
+
+# Commands.
+COMMANDS = {
+    "!анализ": command_analyse,
+    "!номер": command_validate_phone_number,
+    "!метод": command_api_method,
+    "!флуд": command_flood,
+    "!аккаунты": command_search_accounts,
+}
 
 # Message.
-print("[Отладка] Скрипт запущен")
+if NUMVERIFY_KEY is None:
+    # If key is not set.
+
+    # Message.
+    print("[Debug] Numverify key is not set! Please add key if you want to analyse phone numbers!")
+
+# Message.
+print("[Debug] Launched!")
 
 # Starting listener.
 api_longpoll_listener(message_handler)
 
 # TODO:
+# City.
+# Work places / study places.
+# Relativities 
 # Photos scannning? Videos?
 # FAST arguments should make users.get method work as group call, faster, less return values.
 # Repair wall.getComments threading (sub comments feature)
