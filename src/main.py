@@ -1299,11 +1299,3 @@ print("[Debug] Launched!")
 
 # Starting listener.
 api_longpoll_listener(message_handler)
-
-# TODO:
-# City.
-# Work places / study places.
-# Relativities 
-# Photos scannning? Videos?
-# FAST arguments should make users.get method work as group call, faster, less return values.
-# Repair wall.getComments threading (sub comments feature)
