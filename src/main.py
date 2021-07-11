@@ -1,5 +1,6 @@
 # Importing collections for counter.
 from collections import Counter
+from threading import ExceptHookArgs
 
 # Importing time for measure time.
 from time import time, sleep
@@ -16,6 +17,9 @@ from vk_api.exceptions import AuthError
 
 # Parsing FOAF, Number validation.
 import urllib.request, re, json
+
+# Typing
+from typing import NoReturn, Union
 
 # Date.
 import datetime
@@ -423,7 +427,7 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
     # Authors cache.
     _cached_authors = {}
 
-    def __parse_comment(_comment: dict) -> dict:
+    def __parse_comment(_comment: dict) -> list:
         # Sub function that parses comment.
 
         # There is also this fields (which may be used):
@@ -638,7 +642,7 @@ def _analyse_format_group(_screen_name: int, _group_name: str) -> str:
 
 # API.
 
-def api_get_id_from_screen_name(_screen_name: str) -> int:
+def api_get_id_from_screen_name(_screen_name: str) -> Union[int, None]:
     # Function that returns id from screen name.
 
     try:
@@ -662,7 +666,7 @@ def api_search_accounts(_nickname: str) -> list:
         except:
             return False
 
-    def __instagram() -> str:
+    def __instagram() -> Union[tuple, None]:
         # Instagram account.
         
         # Getting url.
@@ -671,7 +675,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Instagram", _url) if __exists(_url, 5) else None
 
-    def __facebook() -> str:
+    def __facebook() -> Union[tuple, None]:
         # Facebook account.
         
         # Getting url.
@@ -680,7 +684,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Facebook", _url) if __exists(_url, 3) else None
 
-    def __tiktok() -> str:
+    def __tiktok() -> Union[tuple, None]:
         # Tiktok account.
 
         # Getting url.
@@ -689,7 +693,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("TikTok", _url) if __exists(_url, 5) else None
 
-    def __odnoklassniki() -> str:
+    def __odnoklassniki() -> Union[tuple, None]:
         # Odnoklassniki account.
 
         # Getting url.
@@ -698,7 +702,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("OK", _url) if __exists(_url, 2) else None
 
-    def __github() -> str:
+    def __github() -> Union[tuple, None]:
         # Github account.
 
         # Getting url.
@@ -707,7 +711,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Github", _url) if __exists(_url, 4) else None
     
-    def __steam() -> str:
+    def __steam() -> Union[tuple, None]:
         # Steam account.
 
         # Getting url.
@@ -716,7 +720,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Steam", _url) if __exists(_url, 5) else None
 
-    def __twitter() -> str:
+    def __twitter() -> Union[tuple, None]:
         # Twitter account.
 
         # Getting url.
@@ -725,7 +729,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Twitter", _url) if __exists(_url, 3) else None
 
-    def __twitch() -> str:
+    def __twitch() -> Union[tuple, None]:
         # Twitch account.
 
         # Getting url.
@@ -734,7 +738,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Twitch", _url) if __exists(_url, 2) else None
 
-    def __youtube() -> str:
+    def __youtube() -> Union[tuple, None]:
         # YouTube account.
 
         # Getting url.
@@ -743,7 +747,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("OK", _url) if __exists(_url, 2) else None
 
-    def __search() -> list:
+    def __search() -> Union[tuple, None]:
         # Function that searchs for accounts.
 
         # Dont returns 404:
@@ -758,7 +762,7 @@ def api_search_accounts(_nickname: str) -> list:
     # Returning.
     return _accounts
 
-def api_validate_phone_number(_number: int) -> dict:
+def api_validate_phone_number(_number: int) -> Union[dict, AuthError, None]:
     # Function that validates phone number and returns it to you.
 
     if NUMVERIFY_KEY is None:
@@ -783,7 +787,7 @@ def api_validate_phone_number(_number: int) -> dict:
         # Returning result.
         return _result
 
-def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts, screen_name") -> dict:
+def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts, screen_name") -> Union[dict, None]:
     # Function that returns user data.
     try:
         # Getting user.
@@ -795,7 +799,7 @@ def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, co
     except Exception:
         return None
 
-def api_get_friends(_user_id: int) -> list:
+def api_get_friends(_user_id: int) -> Union[list]:
     # Function that returns friends list and count,
     
     # Getting friends.
@@ -852,7 +856,7 @@ def api_get_group_links(_group_id: int) -> list:
     except Exception:
         return []
 
-def api_send_message(_peer_id: int, _message: str) -> any:
+def api_send_message(_peer_id: int, _message: str) -> Union[int, None]:
     # Function that sends message.
 
     # Sending.
@@ -864,7 +868,7 @@ def api_send_message(_peer_id: int, _message: str) -> any:
     except Exception:
         return None
 
-def api_longpoll_listener(_function) -> None:
+def api_longpoll_listener(_function) -> NoReturn:
     # Function that listens for longpool.
     for _event in vk_api.longpoll.VkLongPoll(API).listen():
         # For every event in longpoll.
@@ -875,7 +879,7 @@ def api_longpoll_listener(_function) -> None:
             # Calling function.
             _function(_event)
 
-def api_parse_user_foaf(_user_id: int): 
+def api_parse_user_foaf(_user_id: int) -> tuple: 
     # Function that parses FOAF.
 
     # Getting user FOAF link.
@@ -889,16 +893,29 @@ def api_parse_user_foaf(_user_id: int):
         _user_xml = _response.read().decode(_user_foaf_code)
 
     # Parsing xml.
-    _created_at = re.findall(r'ya:created dc:date="(.*)"', _user_xml)[0]
+
+    # Created at.
+    _created_at = re.findall(r'ya:created dc:date="(.*)"', _user_xml)
+    _created_at =  "" if len(_created_at) == 0 else _created_at[0]
+
+    # Logged in at.
     _loggedin_at = re.findall(r'ya:lastLoggedIn dc:date="(.*)"', _user_xml)
     _loggedin_at = "Скрыто через VK Me" if len(_loggedin_at) == 0 else _loggedin_at[0]
+
+    # Modified at.
     _modified_at = re.findall(r'ya:modified dc:date="(.*)"', _user_xml)
     _modified_at = "" if len(_modified_at) == 0 else _modified_at[0]
-    _public_access = re.findall(r'<ya:publicAccess>(.*)</ya:publicAccess>', _user_xml)[0]
-    _profile_state = re.findall(r'<ya:profileState>(.*)</ya:profileState>', _user_xml)[0]
+
+    # Public access.
+    _public_access = re.findall(r'<ya:publicAccess>(.*)</ya:publicAccess>', _user_xml)
+    _public_access = "" if len(_public_access) == 0 else _public_access[0]
+
+    # Profile state.
+    _profile_state = re.findall(r'<ya:profileState>(.*)</ya:profileState>', _user_xml)
+    _public_access = "" if len(_profile_state) == 0 else _profile_state[0]
 
     # Returning.
-    return _created_at, _loggedin_at, _modified_at, _public_access, _profile_state
+    return (_created_at, _loggedin_at, _modified_at, _public_access, _profile_state)
 
 def api_get_subscriptions(_user_id: int, _offset: int=0) -> list:
     # Function that returns list of subscriptions.
@@ -1010,7 +1027,7 @@ def api_get_post_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list:
     except Exception:
         return []
 
-def api_chat_create(_user_id: int, _title: str) -> None:
+def api_chat_create(_user_id: int, _title: str) -> int:
     # Function that creates an new chat.
 
     # Creating chat.
@@ -1019,7 +1036,7 @@ def api_chat_create(_user_id: int, _title: str) -> None:
         "title": _title
     })
 
-def api_chat_delete_history(_chat_id: int) -> None:
+def api_chat_delete_history(_chat_id: int) -> int:
     # Function that deletes chat history.
 
     # Deleting.
@@ -1028,7 +1045,7 @@ def api_chat_delete_history(_chat_id: int) -> None:
         "peer_id": 2000000000 + _chat_id
     })
 
-def api_chat_remove_user(_chat_id: int, _user_id: int) -> None:
+def api_chat_remove_user(_chat_id: int, _user_id: int) -> Union[bool, int]:
     # Function that removes user from chat.
 
     # Remvoing user.
@@ -1080,34 +1097,51 @@ def api_get_post_comments(_owner_id: int, _item_id: int, _offset: int=0) -> list
     _max_count = 100
 
     # Getting comments.
-    try:
-        _comments = API.method("wall.getComments",{
-            "random_id": vk_api.utils.get_random_id(), 
-            "owner_id": _owner_id,
-            "post_id": _item_id,
-            "count": _max_count,
-            "offset": _offset,
-            "thread_items_count": 10,
-            # This is dont work, i DONT KNOW why, in developer panel this have to work as i expect!
-            #"fields": "first_name, last_name",
-            "extended": 1,
-            "need_likes": 1
-        })
+    _comments = api_method_safe("wall.getComments",{
+        "random_id": vk_api.utils.get_random_id(), 
+        "owner_id": _owner_id,
+        "post_id": _item_id,
+        "count": _max_count,
+        "offset": _offset,
+        "thread_items_count": 10,
+        # This is dont work, i DONT KNOW why, in developer panel this have to work as i expect!
+        #"fields": "first_name, last_name",
+        "extended": 1,
+        "need_likes": 1
+    })
 
-        if _comments["count"] - (_offset + _max_count) > 0:
-            # If not all.
+    if _comments is None:
+        # If error.
 
-            # Adding other.
-            _comments["items"] += api_get_post_comments(_owner_id, _item_id, _offset + _max_count)
-        
         # Returning.
-        return _comments["items"]
-    except Exception:
         return []
+
+    if _comments["count"] - (_offset + _max_count) > 0:
+        # If not all.
+
+        # Adding other.
+        _comments["items"] += api_get_post_comments(_owner_id, _item_id, _offset + _max_count)
+    
+    # Returning.
+    return _comments["items"]
+
+def api_method_safe(_method: str, _arguments: dict) -> any:
+    # Function that safely executes api method.
+
+    try:
+        # Trying to execute.
+
+        # Executing and returning.
+        return API.method(_method, _arguments)
+    except Exception:
+        # If error.
+
+        # Returning none.
+        return None
 
 # Messages.
 
-def message_handler(_event) -> None:
+def message_handler(_event) -> NoReturn:
     # Function that handles message.
 
     # Getting arguments.
@@ -1128,7 +1162,7 @@ def message_handler(_event) -> None:
 
 # Commands.
 
-def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> None:
+def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
     # Function for command analyse.
     
     # Fast disabled by default.
@@ -1163,7 +1197,7 @@ def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> None:
     api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) закончен! Потрачено: {int(time() - _start_time)}с!")
     print(f"[Debug] Analysis https://vk.com/id{_user_id} completed! Passed {int(time() - _start_time)}s!")
 
-def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list) -> None:
+def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that validates phone number.
 
     if len(_arguments) > 0:
@@ -1197,13 +1231,41 @@ def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list
             # Error.
             return api_send_message(_peer_id, f"[Анализатор] Не удалось найти ничего об этом номере!")
 
-def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> None:
+def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that executes vk method.
 
-    # Returning.
-    return api_send_message(_peer_id, f"[Анализатор] Результат - {eval(' '.join(_arguments))}!")
+    # Getting source.
+    _source = " ".join(_arguments)
 
-def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> None:
+    if len(_source) < 0:
+        # If empty.
+
+        # Returning.
+        return -1
+
+    # Result.
+    try:
+        if _source[0] == "*":
+            # If star.
+
+            # Full source execution.
+            _source = _source[1:]
+            _result: any = eval(_source)
+        else:
+            # If not star.
+
+            # Method.
+            _result: any = eval(f"api_method_safe({_source})")
+    except Exception as _exception:
+        # If error.
+        
+        # Exception.
+        _result = str(_exception)
+
+    # Returning.
+    return api_send_message(_peer_id, f"[Анализатор] Результат - {_result}!")
+
+def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that floods with conversations.
 
     # Iterations.
@@ -1245,7 +1307,7 @@ def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> None:
     except Exception as _exception:
         return api_send_message(_peer_id, f"[Анализатор][Флуд] Ошибка: {_exception}")
 
-def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> None:
+def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that searchs accounts
 
     if len(_arguments) == 0:
@@ -1260,13 +1322,13 @@ def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> N
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор][Аккаунты] Результат для ника {_arguments[0]}:\n" + ",\n".join(_accounts))
 
-def command_help(_user_id: int, _peer_id: int, _arguments: list) -> None:
+def command_help(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command help
 
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор] Команды:\n!анализ [id] [any=fastmode],\n!номер number,\n!метод [pycode],\n!флуд,\n!аккаунты [nickname],\n!помощь")
 
-def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> None:
+def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command groups old.
 
     # Result list.
