@@ -19,7 +19,7 @@ from vk_api.exceptions import AuthError
 import urllib.request, re, json
 
 # Typing
-from typing import NoReturn, Union
+from typing import NoReturn, Union, Optional
 
 # Date.
 import datetime
@@ -642,7 +642,7 @@ def _analyse_format_group(_screen_name: int, _group_name: str) -> str:
 
 # API.
 
-def api_get_id_from_screen_name(_screen_name: str) -> Union[int, None]:
+def api_get_id_from_screen_name(_screen_name: str) -> Optional[int]:
     # Function that returns id from screen name.
 
     try:
@@ -666,7 +666,7 @@ def api_search_accounts(_nickname: str) -> list:
         except:
             return False
 
-    def __instagram() -> Union[tuple, None]:
+    def __instagram() -> Optional[tuple]:
         # Instagram account.
         
         # Getting url.
@@ -675,7 +675,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Instagram", _url) if __exists(_url, 5) else None
 
-    def __facebook() -> Union[tuple, None]:
+    def __facebook() -> Optional[tuple]:
         # Facebook account.
         
         # Getting url.
@@ -684,7 +684,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Facebook", _url) if __exists(_url, 3) else None
 
-    def __tiktok() -> Union[tuple, None]:
+    def __tiktok() -> Optional[tuple]:
         # Tiktok account.
 
         # Getting url.
@@ -693,7 +693,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("TikTok", _url) if __exists(_url, 5) else None
 
-    def __odnoklassniki() -> Union[tuple, None]:
+    def __odnoklassniki() ->Optional[tuple]:
         # Odnoklassniki account.
 
         # Getting url.
@@ -702,7 +702,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("OK", _url) if __exists(_url, 2) else None
 
-    def __github() -> Union[tuple, None]:
+    def __github() -> Optional[tuple]:
         # Github account.
 
         # Getting url.
@@ -711,7 +711,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Github", _url) if __exists(_url, 4) else None
     
-    def __steam() -> Union[tuple, None]:
+    def __steam() -> Optional[tuple]:
         # Steam account.
 
         # Getting url.
@@ -720,7 +720,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Steam", _url) if __exists(_url, 5) else None
 
-    def __twitter() -> Union[tuple, None]:
+    def __twitter() -> Optional[tuple]:
         # Twitter account.
 
         # Getting url.
@@ -729,7 +729,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Twitter", _url) if __exists(_url, 3) else None
 
-    def __twitch() -> Union[tuple, None]:
+    def __twitch() -> Optional[tuple]:
         # Twitch account.
 
         # Getting url.
@@ -738,7 +738,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("Twitch", _url) if __exists(_url, 2) else None
 
-    def __youtube() -> Union[tuple, None]:
+    def __youtube() -> Optional[tuple]:
         # YouTube account.
 
         # Getting url.
@@ -747,7 +747,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("OK", _url) if __exists(_url, 2) else None
 
-    def __search() -> Union[tuple, None]:
+    def __search() -> Optional[tuple]:
         # Function that searchs for accounts.
 
         # Dont returns 404:
@@ -787,7 +787,7 @@ def api_validate_phone_number(_number: int) -> Union[dict, AuthError, None]:
         # Returning result.
         return _result
 
-def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts, screen_name") -> Union[dict, None]:
+def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts, screen_name") -> Optional[dict]:
     # Function that returns user data.
     try:
         # Getting user.
@@ -856,7 +856,7 @@ def api_get_group_links(_group_id: int) -> list:
     except Exception:
         return []
 
-def api_send_message(_peer_id: int, _message: str) -> Union[int, None]:
+def api_send_message(_peer_id: int, _message: str) -> Optional[int]:
     # Function that sends message.
 
     # Sending.
