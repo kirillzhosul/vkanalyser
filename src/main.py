@@ -17,6 +17,9 @@ from vk_api.exceptions import AuthError
 # Parsing FOAF, Number validation.
 import urllib.request, re, json
 
+# Date.
+import datetime
+
 # Analyse.
 
 def _analyse_user(_user_id: int, _fast: bool) -> dict:
@@ -1263,6 +1266,84 @@ def command_help(_user_id: int, _peer_id: int, _arguments: list) -> None:
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор] Команды:\n!анализ [id] [any=fastmode],\n!номер number,\n!метод [pycode],\n!флуд,\n!аккаунты [nickname],\n!помощь")
 
+def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> None:
+    # Function for command groups old.
+
+    # Result list.
+    _groups_old = []
+    _groups_ban = []
+
+    # Max date.
+    _date_max = 2021
+    
+    # Argument.
+    if len(_arguments) > 0:
+        _date_max = int(_arguments[0])
+
+    # Message.
+    api_send_message(_peer_id, f"[Анализатор][Группы] Анализ старых групп начат!")
+
+    # Getting groups.
+    _groups = api_get_groups(_user_id)
+
+    # Current.
+    _current = 0
+
+    for _group in _groups:
+        # For every group.
+
+        # Message.
+        _current += 1
+        print(f"Group {_current} / {len(_groups)}")
+
+        try:
+            # Getting posts.
+            _posts = API.method("wall.get", {
+                "random_id": vk_api.utils.get_random_id(), 
+                "owner_id": -_group["id"], 
+                "count": 10
+            })["items"]
+        except:
+            # If error.
+            
+            # Banned.
+            _groups_ban.append(_analyse_format_group(_group["screen_name"], _group["name"]))
+            continue
+
+        if len(_posts) == 0:
+            # If no posts.
+
+            # Banned.
+            _groups_ban.append(_analyse_format_group(_group["screen_name"], _group["name"]))
+            continue
+
+        # Date max iteration.
+        _date_max_ = 1970
+
+        for _post in _posts:
+            # For every post.
+
+            # Getting date.
+            _date = int(datetime.datetime.fromtimestamp(_post["date"]).strftime('%Y-%m-%d %H:%M:%S')[:4])
+
+            if _date > _date_max_:
+                # If new biggest.
+
+                # Setting.
+                _date_max_ = _date
+        if _date_max_ < _date_max:
+            # If old.
+
+            # Old.
+            _groups_old.append(_analyse_format_group(_group["screen_name"], _group["name"]))
+
+    # Formatting.
+    _groups_old = ", ".join(_groups_old)
+    _groups_ban = ", ".join(_groups_ban)
+
+    # Returning.
+    return api_send_message(_peer_id, f"[Анализатор][Группы]\nСтарые (до {_date_max}):\n{_groups_old},\n Удалены или в бане или пустые:\n{_groups_ban}.")
+
 # Other.
 
 def chunks(_list: list, _size: int) -> list:
@@ -1284,7 +1365,8 @@ COMMANDS = {
     "!метод": command_api_method,
     "!флуд": command_flood,
     "!аккаунты": command_search_accounts,
-    "!помощь": command_help
+    "!помощь": command_help,
+    "!группы_мусорные": command_groups_show_old,
 }
 
 # Message.
