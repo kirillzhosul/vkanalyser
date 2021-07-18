@@ -6,3 +6,8 @@ Python script that analyses VKontakte profile and returns result as message.
 - Analyse phone number
 - Analyse accounts (for nickname)
 - etc.
+
+# Previews:
+![Work](preview_work.png)
+![Help](preview_help.png)
+![Debug](preview_debug.png)
