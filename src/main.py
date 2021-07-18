@@ -1326,7 +1326,13 @@ def command_help(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command help
 
     # Returning.
-    return api_send_message(_peer_id, f"[Анализатор] Команды:\n!анализ [id] [any=fastmode],\n!номер number,\n!метод [pycode],\n!флуд,\n!аккаунты [nickname],\n!помощь")
+    return api_send_message(_peer_id, f"[Анализатор] Команды:\n!анализ [id] [any=fastmode],\n!номер number,\n!метод [pycode],\n!флуд,\n!аккаунты [nickname],\n!помощь,\n!индекс")
+
+def command_get_user_index(_user_id: int, _peer_id: int, _arguments: list) -> int:
+    # Function for command get user index.
+
+    # Returning.
+    return api_send_message(_peer_id, f"[Анализатор] Индекс профиля: {_user_id},\nИндекс Переписки: {_peer_id}.")
 
 def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command groups old.
@@ -1429,6 +1435,7 @@ COMMANDS = {
     "!аккаунты": command_search_accounts,
     "!помощь": command_help,
     "!группы_мусорные": command_groups_show_old,
+    "!индекс": command_get_user_index,
 }
 
 # Message.
