@@ -1,7 +1,3 @@
-# Importing collections for counter.
-from collections import Counter
-from threading import ExceptHookArgs
-
 # Importing time for measure time.
 from time import time, sleep
 
@@ -12,19 +8,25 @@ from os import getenv
 from random import randint
 
 # Importing VK API.
-import vk_api, vk_api.utils, vk_api.longpoll
-from vk_api.exceptions import AuthError 
+import vk_api
+import vk_api.utils
+import vk_api.longpoll
+from vk_api.exceptions import AuthError
 
 # Parsing FOAF, Number validation.
-import urllib.request, re, json
+import urllib.request
+import re
+import json
 
 # Typing
-from typing import NoReturn, Union, Optional
+from typing import NoReturn, Union, Optional, Type
 
 # Date.
 import datetime
 
+
 # Analyse.
+
 
 def _analyse_user(_user_id: int, _fast: bool) -> dict:
     # Function that analyses page.
@@ -48,7 +50,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
 
     # Analyse results.
     print("[Debug][5] Making default analyse result...")
-    _analyse_resulsts = {
+    _analyse_results = {
         "potential_links": [],
         "wip_names": [],
         "wip_likers": [],
@@ -58,16 +60,16 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         "user_friends": _counters["friends"] if "friends" in _counters else 0,
         "user_albums": _counters["albums"] if "albums" in _counters else 0,
         "user_gifts": _counters["gifts"] if "gifts" in _counters else 0,
-        "user_followers": _counters["followers"] if "followers" in _counters else 0, 
+        "user_followers": _counters["followers"] if "followers" in _counters else 0,
         "user_audios": _counters["audios"] if "audios" in _counters else 0,
         "user_is_closed": "закрытый" if _current_user["is_closed"] else "окрытый",
         "friends_deactivated": 0,
-        "friends_closed": 0, 
-        "friends_verified": 0, 
-        "friends_of_friends": 0, 
-        "friends_albums": 0, 
-        "friends_audios": 0, 
-        "friends_gifts": 0, 
+        "friends_closed": 0,
+        "friends_verified": 0,
+        "friends_of_friends": 0,
+        "friends_albums": 0,
+        "friends_audios": 0,
+        "friends_gifts": 0,
         "friends_followers": 0,
         "friends_male": 0,
         "friends_female": 0,
@@ -90,12 +92,16 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         "user_phone_number": None,
         "user_subscriptions_count": len(_subscriptions),
         "user_subscriptions_groups": len(api_get_groups(_user_id)),
-        "user_subscriptions_pages":  len([_subscription for _subscription in _subscriptions if _subscription["type"] == "page"]),
-        "user_subscriptions_events":  len([_subscription for _subscription in _subscriptions if _subscription["type"] == "event"]),
-        "user_subscriptions_private": len([_subscription for _subscription in _subscriptions if ("is_closed" in _subscription and _subscription["is_closed"])]),
+        "user_subscriptions_pages": len(
+            [_subscription for _subscription in _subscriptions if _subscription["type"] == "page"]),
+        "user_subscriptions_events": len(
+            [_subscription for _subscription in _subscriptions if _subscription["type"] == "event"]),
+        "user_subscriptions_private": len([_subscription for _subscription in _subscriptions if
+                                           ("is_closed" in _subscription and _subscription["is_closed"])]),
         "user_birthdate": _current_user["bdate"] if "bdate" in _current_user else "НЕИЗВЕСТНО",
         "user_name": _current_user["first_name"] + " " + _current_user["last_name"],
-        "user_sex": "Мужской" if _current_user["sex"] == 2 else ("Женский" if _current_user["sex"] == 1 else "Не указан"),
+        "user_sex": "Мужской" if _current_user["sex"] == 2 else (
+            "Женский" if _current_user["sex"] == 1 else "Не указан"),
         "user_index": _user_id,
         "user_registered_at": _foaf_results[0],
         "user_last_logged_in_at": _foaf_results[1],
@@ -129,7 +135,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 # If deactivated.
 
                 # Adding.
-                _analyse_resulsts["friends_deactivated"] += 1
+                _analyse_results["friends_deactivated"] += 1
 
             if "counters" not in _friend_data:
                 # If invalid result.
@@ -140,34 +146,36 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             # Getting counters.
             _counters = _friend_data["counters"]
 
-            if _friend_data["last_name"] == _current_user["last_name"] or _friend_data["last_name"] + "а" == _current_user["last_name"] or _friend_data["last_name"] == _current_user["last_name"] + "а":
+            if _friend_data["last_name"] == _current_user["last_name"] or _friend_data["last_name"] + "а" == \
+                    _current_user["last_name"] or _friend_data["last_name"] == _current_user["last_name"] + "а":
                 # If namesakes.
 
                 # Formatting user.
-                _user_formatted = _analyse_format_user(_friend_data["id"], _friend_data["first_name"], _friend_data["last_name"])
+                _user_formatted = _analyse_format_user(_friend_data["id"], _friend_data["first_name"],
+                                                       _friend_data["last_name"])
 
-                if _user_formatted not in _analyse_resulsts["user_potential_relatives"]:
+                if _user_formatted not in _analyse_results["user_potential_relatives"]:
                     # If not already there.
 
                     # Adding potential relatives.
-                    _analyse_resulsts["user_potential_relatives"].append(_user_formatted)
+                    _analyse_results["user_potential_relatives"].append(_user_formatted)
 
                     # Message.
                     print(f"[Debug][6][2] Found new potential relative {_user_formatted}!")
 
             # Counters etc.
-            _analyse_resulsts["friends_closed"] += _friend_data["is_closed"]
-            _analyse_resulsts["friends_verified"] += _friend_data["verified"]
-            _analyse_resulsts["friends_of_friends"] += _counters["friends"] if "friends" in _counters else 0
-            _analyse_resulsts["friends_albums"] += _counters["albums"] if "albums" in _counters else 0
-            _analyse_resulsts["friends_audios"] += _counters["audios"] if "audios" in _counters else 0 
-            _analyse_resulsts["friends_gifts"] += _counters["gifts"] if "gifts" in _counters else 0
-            _analyse_resulsts["friends_followers"] += _counters["followers"] if "followers" in _counters else 0
-            _analyse_resulsts["friends_male"] += (_friend_data["sex"] == 2)
-            _analyse_resulsts["friends_female"] += (_friend_data["sex"] == 1)
+            _analyse_results["friends_closed"] += _friend_data["is_closed"]
+            _analyse_results["friends_verified"] += _friend_data["verified"]
+            _analyse_results["friends_of_friends"] += _counters["friends"] if "friends" in _counters else 0
+            _analyse_results["friends_albums"] += _counters["albums"] if "albums" in _counters else 0
+            _analyse_results["friends_audios"] += _counters["audios"] if "audios" in _counters else 0
+            _analyse_results["friends_gifts"] += _counters["gifts"] if "gifts" in _counters else 0
+            _analyse_results["friends_followers"] += _counters["followers"] if "followers" in _counters else 0
+            _analyse_results["friends_male"] += (_friend_data["sex"] == 2)
+            _analyse_results["friends_female"] += (_friend_data["sex"] == 1)
 
             # Adding first name.
-            _analyse_resulsts["wip_names"].append(_friend_data["first_name"])
+            _analyse_results["wip_names"].append(_friend_data["first_name"])
 
     if _current_user["can_access_closed"] and not _fast:
         # If user is not closed and not fast.
@@ -183,13 +191,14 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             # Message.
             _counter += 1
             print(f"[Debug][7][1] Processing wall post... ({_counter} / {_counted})")
-            
+
             # Analysing wall.
-            _analyse_resulsts["user_wall_posts"] += 1
-            _analyse_resulsts["user_wall_likes"] += _wall_post["likes"]["count"] if "likes" in _wall_post else 0
-            _analyse_resulsts["user_wall_comments"] += _wall_post["comments"]["count"] if "comments" in _wall_post else 0
-            _analyse_resulsts["user_wall_reposts"] += _wall_post["reposts"]["count"] if "reposts" in _wall_post else 0
-            _analyse_resulsts["user_wall_views"] += _wall_post["views"]["count"] if "views" in _wall_post else 0
+            _analyse_results["user_wall_posts"] += 1
+            _analyse_results["user_wall_likes"] += _wall_post["likes"]["count"] if "likes" in _wall_post else 0
+            _analyse_results["user_wall_comments"] += _wall_post["comments"][
+                "count"] if "comments" in _wall_post else 0
+            _analyse_results["user_wall_reposts"] += _wall_post["reposts"]["count"] if "reposts" in _wall_post else 0
+            _analyse_results["user_wall_views"] += _wall_post["views"]["count"] if "views" in _wall_post else 0
 
             # Getting likes and comments.
             _wall_likes = api_get_post_likes(_wall_post["owner_id"], _wall_post["id"])
@@ -205,85 +214,94 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 _comment_creator_id = _comment["from_id"]
                 _comment_likes = len(_comment_likers)
 
-                if _comment_likes > _analyse_resulsts["wip_most_popular_comment"][1]:
+                if _comment_likes > _analyse_results["wip_most_popular_comment"][1]:
                     # If new top comment.
 
                     # Adding most popular.
-                    _analyse_resulsts["wip_most_popular_comment"] = (_comment_creator, _comment_likes)
+                    _analyse_results["wip_most_popular_comment"] = (_comment_creator, _comment_likes)
 
                 # Adding commentator.
-                _analyse_resulsts["wip_commentators"].append(_comment_creator)
+                _analyse_results["wip_commentators"].append(_comment_creator)
 
                 # Adding user as likers.
                 for _liker in _comment_likers:
                     # For likers.
-                    
+
                     # Adding liker.
-                    _analyse_resulsts["wip_likers"].append(_liker)
+                    _analyse_results["wip_likers"].append(_liker)
 
                 # Adding likes.
-                _analyse_resulsts["user_wall_comments_likes"] += _comment_likes
+                _analyse_results["user_wall_comments_likes"] += _comment_likes
 
-                if _comment_creator_last_name == _current_user["last_name"] or _comment_creator_last_name + "а" == _current_user["last_name"] or _comment_creator_last_name == _current_user["last_name"] + "а":
+                if _comment_creator_last_name == _current_user["last_name"] or _comment_creator_last_name + "а" == \
+                        _current_user["last_name"] or _comment_creator_last_name == _current_user["last_name"] + "а":
                     # If namesakes.
 
-                    if _comment_creator_id != _user_id and _comment_creator not in _analyse_resulsts["user_potential_relatives"]:
+                    if _comment_creator_id != _user_id and \
+                            _comment_creator not in _analyse_results["user_potential_relatives"]:
                         # If not already there and not self.
 
                         # Adding potential relatives.
-                        _analyse_resulsts["user_potential_relatives"].append(_comment_creator)
+                        _analyse_results["user_potential_relatives"].append(_comment_creator)
 
                         # Message.
                         print(f"[Debug][7][2][0] Found new potential relative {_comment_creator}!")
-                    
+
             for _user in _wall_likes:
                 # For every user in wall likes.
 
                 # Formatting user.
                 _user_formatted = _analyse_format_user(_user["id"], _user["first_name"], _user["last_name"])
 
-                if _user["last_name"] == _current_user["last_name"] or _user["last_name"] + "а" == _current_user["last_name"] or _user["last_name"] == _current_user["last_name"] + "а":
+                if _user["last_name"] == _current_user["last_name"] or \
+                        _user["last_name"] + "а" == _current_user["last_name"] or \
+                        _user["last_name"] == _current_user["last_name"] + "а":
                     # If namesakes.
 
-                    if str(_user["id"]) != str(_user_id) and _user_formatted not in _analyse_resulsts["user_potential_relatives"]:
+                    if str(_user["id"]) != str(_user_id) and \
+                            _user_formatted not in _analyse_results["user_potential_relatives"]:
                         # If not already there and not self.
 
                         # Adding potential relatives.
-                        _analyse_resulsts["user_potential_relatives"].append(_user_formatted)
+                        _analyse_results["user_potential_relatives"].append(_user_formatted)
 
                         # Message.
                         print(f"[Debug][7][2][1] Found new potential relative {_user_formatted}!")
-                    
+
                 # Adding user as likers.
-                _analyse_resulsts["wip_likers"].append(_user_formatted)
+                _analyse_results["wip_likers"].append(_user_formatted)
 
     # Most popular name.
-    if len(_analyse_resulsts["wip_names"]) != 0:
+    if len(_analyse_results["wip_names"]) != 0:
         print("[Debug][8][0] Searching most popular name in friends...")
-        _analyse_resulsts["friends_most_popular_name"] = max(set(_analyse_resulsts["wip_names"]), key = _analyse_resulsts["wip_names"].count)
-        _analyse_resulsts["friends_most_popular_name_count"] = _analyse_resulsts["wip_names"].count(_analyse_resulsts["friends_most_popular_name"])
+        _analyse_results["friends_most_popular_name"] = max(set(_analyse_results["wip_names"]),  key=_analyse_results["wip_names"].count)
+        _analyse_results["friends_most_popular_name_count"] = _analyse_results["wip_names"].count(_analyse_results["friends_most_popular_name"])
 
     # Top liker name.
-    if len(_analyse_resulsts["wip_likers"]) != 0:
+    if len(_analyse_results["wip_likers"]) != 0:
         print("[Debug][8][1] Searching most popular liker on wall...")
-        _analyse_resulsts["top_liker_name"] = max(set(_analyse_resulsts["wip_likers"]), key = _analyse_resulsts["wip_likers"].count)
-        _analyse_resulsts["top_liker_count"] = _analyse_resulsts["wip_likers"].count(_analyse_resulsts["top_liker_name"])
-    
+        _analyse_results["top_liker_name"] = max(set(_analyse_results["wip_likers"]),
+                                                  key=_analyse_results["wip_likers"].count)
+        _analyse_results["top_liker_count"] = _analyse_results["wip_likers"].count(
+            _analyse_results["top_liker_name"])
+
     # Top commentator name.
-    if len(_analyse_resulsts["wip_commentators"]) != 0:
+    if len(_analyse_results["wip_commentators"]) != 0:
         print("[Debug][8][2] Searching most popular commentator on wall...")
-        _analyse_resulsts["comments_most_popular_name"] = max(set(_analyse_resulsts["wip_commentators"]), key = _analyse_resulsts["wip_commentators"].count)
-        _analyse_resulsts["comments_most_popular_count"] = _analyse_resulsts["wip_commentators"].count(_analyse_resulsts["comments_most_popular_name"])
+        _analyse_results["comments_most_popular_name"] = max(set(_analyse_results["wip_commentators"]), key=_analyse_results["wip_commentators"].count)
+        _analyse_results["comments_most_popular_count"] = _analyse_results["wip_commentators"].count(_analyse_results["comments_most_popular_name"])
 
     # Deep admin search.
     print("[Debug][9] Searching for administrated group...")
-    _analyse_resulsts["user_admin_groups"] = _analyse_search_admin(_user_id)
+    _analyse_results["user_admin_groups"] = _analyse_search_admin(_user_id)
 
     # Getting WIP comments most popular.
-    _analyse_resulsts["comments_most_popular_from"], _analyse_resulsts["comments_most_popular_popularity"] = _analyse_resulsts["wip_most_popular_comment"]
-        
+    _analyse_results["comments_most_popular_from"], _analyse_results["comments_most_popular_popularity"] = \
+        _analyse_results["wip_most_popular_comment"]
+
     # Getting phone number.
-    _phone_number = _current_user["mobile_phone"] if "mobile_phone" in _current_user else (_current_user["home_phone"] if "home_phone" in _current_user else None)
+    _phone_number = _current_user["mobile_phone"] if "mobile_phone" in _current_user else (
+        _current_user["home_phone"] if "home_phone" in _current_user else None)
 
     # Converting phone number.
     try:
@@ -298,9 +316,9 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         print("[Debug][10][0] Searching for phone number data (Numverify)...")
 
         # Adding phone number.
-        _analyse_resulsts["user_phone_number"] = _phone_number
+        _analyse_results["user_phone_number"] = _phone_number
 
-        # Getting phone nubmer data.
+        # Getting phone number data.
         _result = api_validate_phone_number(_phone_number)
 
         if _result is not None and _result != AuthError:
@@ -310,11 +328,12 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             print("[Debug][10][1] Founded phone number (Numverify)...")
 
             # Adding results.
-            _analyse_resulsts["user_phone_number_validation"] = (_result['country_name'], _result['location'], _result['carrier'])
+            _analyse_results["user_phone_number_validation"] = (
+                _result['country_name'], _result['location'], _result['carrier'])
         else:
             if _result == AuthError:
                 # If auth error.
-                _analyse_resulsts["user_phone_number_validation"] = AuthError
+                _analyse_results["user_phone_number_validation"] = AuthError
             else:
                 # Message.
                 print("[Debug][10][2] Not founded any data about this phone number (Numverify)...")
@@ -323,9 +342,9 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
     print("[Debug][11] Searching accounts links...")
 
     # Accounts search.
-    _analyse_resulsts["potential_links"] = api_search_accounts(_current_user["screen_name"])
+    _analyse_results["potential_links"] = api_search_accounts(_current_user["screen_name"])
 
-    for _group in _analyse_resulsts["user_admin_groups"]:
+    for _group in _analyse_results["user_admin_groups"]:
         # For every group.
 
         if str(_group[0]) in _group[1]:
@@ -333,19 +352,20 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             continue
 
         # Accounts search.
-        _analyse_resulsts["potential_links"] += api_search_accounts(_group[1])
+        _analyse_results["potential_links"] += api_search_accounts(_group[1])
 
     # Getting only formatted.
-    _analyse_resulsts["user_admin_groups"] = [_group[2] for _group in _analyse_resulsts["user_admin_groups"]]
+    _analyse_results["user_admin_groups"] = [_group[2] for _group in _analyse_results["user_admin_groups"]]
 
     # Clearing memory.
     del _subscriptions
 
     # Returning results.
-    return _analyse_resulsts
+    return _analyse_results
+
 
 def _analyse_search_admin(_user_id) -> list:
-    # Generator that searchs for admin in contacts.
+    # Generator that searches for admin in contacts.
 
     def __process_group(_group: dict) -> None:
         # Function that process group.
@@ -354,7 +374,8 @@ def _analyse_search_admin(_user_id) -> list:
         if "contacts" not in _group:
             return
 
-        for _ in [_contact for _contact in _group["contacts"] if "user_id" in _contact and _user_id == _contact["user_id"]]:
+        for _ in [_contact for _contact in _group["contacts"] if
+                  "user_id" in _contact and _user_id == _contact["user_id"]]:
             # For every contact.
 
             # Formatting.
@@ -372,8 +393,8 @@ def _analyse_search_admin(_user_id) -> list:
     # Groups.
     _groups = []
 
-    #for _subscription in api_get_subscriptions(_user_id): 
-    #    # For every subscriptio
+    # for _subscription in api_get_subscriptions(_user_id):
+    #    # For every subscription
     #
     #    # Getting type.
     #    _type = _subscription["type"]
@@ -384,8 +405,8 @@ def _analyse_search_admin(_user_id) -> list:
     #        # Adding group.
     #        _groups.append(_subscription["id"])
     #
-    #_groups = [_group for _group in api_get_groups_contacts(_groups) if "contacts" in _group]
-    #for _group in _groups: 
+    # _groups = [_group for _group in api_get_groups_contacts(_groups) if "contacts" in _group]
+    # for _group in _groups:
     #    # For every group.
     #
     #    # Process.
@@ -394,7 +415,7 @@ def _analyse_search_admin(_user_id) -> list:
     # TODO: Should remove one of this loops?
 
     _groups = [_group for _group in api_get_groups(_user_id) if "contacts" in _group]
-    for _group in _groups: 
+    for _group in _groups:
         # For every group.
 
         # Process.
@@ -420,7 +441,8 @@ def _analyse_search_admin(_user_id) -> list:
 
     # Returning result.        
     return _result
-   
+
+
 def _analyse_parse_comments(_wall_comments: list) -> list:
     # Function that parses wall comments.
 
@@ -472,7 +494,7 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
 
             # Getting comment id.
             _comment_id = _comment["id"]
-            
+
             # Getting likes
             _likes = api_get_comment_likes(_comment["owner_id"], _comment_id)
 
@@ -480,8 +502,9 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
                 # For every user who left like.
 
                 # Adding.
-                _result[0]["likes"].append(_analyse_format_user(_liker["id"], _liker["first_name"], _liker["last_name"]))
-    
+                _result[0]["likes"].append(
+                    _analyse_format_user(_liker["id"], _liker["first_name"], _liker["last_name"]))
+
         if "thread" in _comment and _comment["thread"]["count"] > 0:
             # If thread not null-size.
 
@@ -509,6 +532,7 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
     # Returning.
     return _parsed_comments
 
+
 def _analyse_format_results(_results: dict, _fast: bool) -> str:
     # Function that formats analyse results.
 
@@ -527,13 +551,16 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
         "[+] Был(а) в сети: {0}".format(_results["user_last_logged_in_at"]),
         "[+] Были изменения: {0}".format(_results["user_modified_at"]) if _results["user_modified_at"] != "" else "",
         "[+] Внешний доступ: {0}".format(_results["user_public_access"]),
-        #"[+] Статус: {0}".format(_results["user_is_active"]),
+        # "[+] Статус: {0}".format(_results["user_is_active"]),
         "[+] {0} друзей".format(_results["user_friends"]),
         "[+] {0} фотоальбомов".format(_results["user_albums"]) if _results["user_albums"] != 0 else "",
         "[+] {0} аудиозаписей".format(_results["user_audios"]) if _results["user_audios"] != 0 else "",
         "[+] {0} подарков".format(_results["user_gifts"]) if _results["user_gifts"] != 0 else "",
         "[+] {0} подписчиков".format(_results["user_followers"]) if _results["user_followers"] != 0 else "",
-        "[+] {0} ({4} Приватных, {1} групп, {2} страниц, {3} событий) подписок".format(_results["user_subscriptions_count"], _results["user_subscriptions_groups"], _results["user_subscriptions_pages"], _results["user_subscriptions_events"], _results["user_subscriptions_private"]),
+        "[+] {0} ({4} Приватных, {1} групп, {2} страниц, {3} событий) подписок".format(
+            _results["user_subscriptions_count"], _results["user_subscriptions_groups"],
+            _results["user_subscriptions_pages"], _results["user_subscriptions_events"],
+            _results["user_subscriptions_private"]),
     ]
 
     # Phone (Profile).
@@ -542,7 +569,7 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
 
         if _results["user_phone_number_validation"] == AuthError:
             # If auth error.
-            
+
             # Lines.
             _results_lines += [
                 "[+] Телефон: {0} (Авторизуйтесь для анализа)".format(_results["user_phone_number"])
@@ -562,7 +589,10 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
 
                 # Adding.
                 _results_lines += [
-                    "[+] Телефон: {0} ({1} {2} {3})".format(_results["user_phone_number"], _results["user_phone_number_validation"][0], _results["user_phone_number_validation"][1], _results["user_phone_number_validation"][2]),
+                    "[+] Телефон: {0} ({1} {2} {3})".format(_results["user_phone_number"],
+                                                            _results["user_phone_number_validation"][0],
+                                                            _results["user_phone_number_validation"][1],
+                                                            _results["user_phone_number_validation"][2]),
                 ]
 
     # Wall.
@@ -575,9 +605,14 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
             "[+] {0} Лайков".format(_results["user_wall_likes"]),
             "[+] {0} Комментариев".format(_results["user_wall_comments"]),
             "[+] {0} Лайков на всех комментариях".format(_results["user_wall_comments_likes"]),
-            "[+] Самый популярный комментарий от {0} ({1} Лайков)".format(_results["comments_most_popular_from"], _results["comments_most_popular_popularity"]) if _results["comments_most_popular_from"] != "" else "",
-            "[+] Больше всего комментариев от {0} (x{1})".format(_results["comments_most_popular_name"], _results["comments_most_popular_count"]) if _results["comments_most_popular_name"] != "" else "",
-            "[+] Больше всего лайков от {0} (x{1})".format(_results["top_liker_name"], _results["top_liker_count"]) if _results["top_liker_name"] != "" else "",
+            "[+] Самый популярный комментарий от {0} ({1} Лайков)".format(_results["comments_most_popular_from"],
+                                                                          _results[
+                                                                              "comments_most_popular_popularity"]) if
+            _results["comments_most_popular_from"] != "" else "",
+            "[+] Больше всего комментариев от {0} (x{1})".format(_results["comments_most_popular_name"],
+                                                                 _results["comments_most_popular_count"]) if _results["comments_most_popular_name"] != "" else "",
+            "[+] Больше всего лайков от {0} (x{1})".format(_results["top_liker_name"], _results["top_liker_count"]) if
+            _results["top_liker_name"] != "" else "",
         ]
 
     # Friends.
@@ -589,7 +624,8 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
             "[+] {0} закрыли профиль".format(_results["friends_closed"]),
             "[+] {0} верифицированные".format(_results["friends_verified"]),
             "[+] {0} мужчин и {1} женщин ({0}М/{1}Ж)".format(_results["friends_male"], _results["friends_female"]),
-            "[+] Самое популярное имя - {} ({} Друзей)".format(_results["friends_most_popular_name"], _results["friends_most_popular_name_count"]) if _results["friends_most_popular_name"] != "" else "",
+            "[+] Самое популярное имя - {} ({} Друзей)".format(_results["friends_most_popular_name"],
+                                                               _results["friends_most_popular_name_count"]) if _results["friends_most_popular_name"] != "" else "",
             "[--------] Подсчёт друзей",
             "[+] У всех друзей, в сумме",
             "[+] {0} друзей".format(_results["friends_of_friends"]),
@@ -599,18 +635,20 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
             "[+] {0} подписчиков".format(_results["friends_followers"]),
         ]
 
-    # Potential relativies.
+    # Potential relatives.
     if len(_results["user_potential_relatives"]) > 0:
         _results_lines += [
             "[--------] Родственники, Однофамильцы",
-            "[+] Вероятные сходства: {0}".format(", ".join(_results["user_potential_relatives"]) if len(_results["user_potential_relatives"]) > 0 else "Не найдено"),
+            "[+] Вероятные сходства: {0}".format(", ".join(_results["user_potential_relatives"]) if len(
+                _results["user_potential_relatives"]) > 0 else "Не найдено"),
         ]
 
     # Admin in groups.
     if len(_results["user_admin_groups"]) > 0:
         _results_lines += [
             "[--------] Управление",
-            "[+] Группы под управлением: {0}".format(", ".join(_results["user_admin_groups"]) if len(_results["user_admin_groups"]) > 0 else "Не найдено")
+            "[+] Группы под управлением: {0}".format(
+                ", ".join(_results["user_admin_groups"]) if len(_results["user_admin_groups"]) > 0 else "Не найдено")
         ]
 
     # Potential links
@@ -624,9 +662,10 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
 
             # Adding.
             _results_lines.append("[+] {1}".format(_link[0], _link[1]))
-        
+
     # Returning.
-    return ",\n".join([_line for _line in _results_lines if _line != ""]) 
+    return ",\n".join([_line for _line in _results_lines if _line != ""])
+
 
 def _analyse_format_user(_id: int, _first_name: str, _last_name: str) -> str:
     # Function that format user link.
@@ -634,11 +673,13 @@ def _analyse_format_user(_id: int, _first_name: str, _last_name: str) -> str:
     # Returning formatted.
     return f"@id{_id}({_first_name} {_last_name})"
 
+
 def _analyse_format_group(_screen_name: int, _group_name: str) -> str:
     # Function that format group link.
 
     # Returning formatted.
     return f"@{_screen_name}({_group_name})"
+
 
 # API.
 
@@ -647,28 +688,30 @@ def api_get_id_from_screen_name(_screen_name: str) -> Optional[int]:
 
     try:
         # Getting id.
-        return API.method("utils.resolveScreenName",{
-            "random_id": vk_api.utils.get_random_id(), 
-            "screen_name": _screen_name, 
-        })["object_id"] 
+        return API.method("utils.resolveScreenName", {
+            "random_id": vk_api.utils.get_random_id(),
+            "screen_name": _screen_name,
+        })["object_id"]
     except Exception:
         return None
+
 
 def api_search_accounts(_nickname: str) -> list:
     # Function that search for account in other social networks.
 
-    def __exists(_link: str, _timeout: int=2) -> bool:
+    def __exists(_link: str, _timeout: int = 2) -> bool:
         # Function that check is 404 or not.
 
         # Returning.
         try:
-            return urllib.request.urlopen(urllib.request.Request(_link, headers = {'User-Agent': 'VK Analyser'}), timeout=_timeout).status != 404
+            return urllib.request.urlopen(urllib.request.Request(_link, headers={'User-Agent': 'VK Analyser'}),
+                                          timeout=_timeout).status != 404
         except:
             return False
 
     def __instagram() -> Optional[tuple]:
         # Instagram account.
-        
+
         # Getting url.
         _url = f"https://www.instagram.com/{_nickname}/"
 
@@ -677,7 +720,7 @@ def api_search_accounts(_nickname: str) -> list:
 
     def __facebook() -> Optional[tuple]:
         # Facebook account.
-        
+
         # Getting url.
         _url = f"https://www.facebook.com/{_nickname}/"
 
@@ -693,7 +736,7 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("TikTok", _url) if __exists(_url, 5) else None
 
-    def __odnoklassniki() ->Optional[tuple]:
+    def __odnoklassniki() -> Optional[tuple]:
         # Odnoklassniki account.
 
         # Getting url.
@@ -710,7 +753,7 @@ def api_search_accounts(_nickname: str) -> list:
 
         # Returning.
         return ("Github", _url) if __exists(_url, 4) else None
-    
+
     def __steam() -> Optional[tuple]:
         # Steam account.
 
@@ -747,10 +790,10 @@ def api_search_accounts(_nickname: str) -> list:
         # Returning.
         return ("OK", _url) if __exists(_url, 2) else None
 
-    def __search() -> Optional[tuple]:
-        # Function that searchs for accounts.
+    def __search() -> list:
+        # Function that searches for accounts.
 
-        # Dont returns 404:
+        # Don't returns 404:
         # __twitch(), __steam(), __twitter()
 
         # Returning.
@@ -762,7 +805,8 @@ def api_search_accounts(_nickname: str) -> list:
     # Returning.
     return _accounts
 
-def api_validate_phone_number(_number: int) -> Union[dict, AuthError, None]:
+
+def api_validate_phone_number(_number: int) -> Union[Type[AuthError], dict, None]:
     # Function that validates phone number and returns it to you.
 
     if NUMVERIFY_KEY is None:
@@ -771,7 +815,10 @@ def api_validate_phone_number(_number: int) -> Union[dict, AuthError, None]:
         # Returning.
         return AuthError
 
-    with urllib.request.urlopen(f"http://apilayer.net/api/validate?access_key={NUMVERIFY_KEY}&number={_number}&country_code=&format=1") as _response:
+    # Getting link.
+    _link = f"http://apilayer.net/api/validate?access_key={NUMVERIFY_KEY}&number={_number}&country_code=&format=1"
+
+    with urllib.request.urlopen(_link) as _response:
         # Opening.
 
         # Getting response.
@@ -787,25 +834,34 @@ def api_validate_phone_number(_number: int) -> Union[dict, AuthError, None]:
         # Returning result.
         return _result
 
-def api_get_user(_user_id: int, _fields: str="counters, sex, verified, bdate, contacts, screen_name") -> Optional[dict]:
+
+def api_get_user(_user_id: Union[int, None], _fields: Optional[str] = None) -> Optional[dict]:
     # Function that returns user data.
+
+    if _fields is None:
+        # If fields is not set.
+
+        # Setting fields.
+        _fields = "counters, sex, verified, bdate, contacts, screen_name"
+
     try:
         # Getting user.
-        return API.method("users.get",{
-            "random_id": vk_api.utils.get_random_id(), 
-            "user_ids": _user_id, 
+        return API.method("users.get", {
+            "random_id": vk_api.utils.get_random_id(),
+            "user_ids": _user_id,
             "fields": _fields
         })[0]
     except Exception:
         return None
 
+
 def api_get_friends(_user_id: int) -> Union[list]:
     # Function that returns friends list and count,
-    
+
     # Getting friends.
     try:
-        _friends = API.method("friends.get",{
-            "random_id": vk_api.utils.get_random_id(), 
+        _friends = API.method("friends.get", {
+            "random_id": vk_api.utils.get_random_id(),
             "user_id": _user_id
         })
 
@@ -814,20 +870,20 @@ def api_get_friends(_user_id: int) -> Union[list]:
     except Exception:
         return []
 
+
 def api_get_groups_contacts(_group_ids: list) -> list:
     # Function that returns groups contacts
-    
+
     # Getting contacts.
     _contacts = []
 
     for _chunk in list(chunks(_group_ids, 500)):
         # For every chunk with size 500.
 
-        
         # Getting contacts.
         try:
-            _current_contacts = API.method("groups.getById",{
-                "random_id": vk_api.utils.get_random_id(), 
+            _current_contacts = API.method("groups.getById", {
+                "random_id": vk_api.utils.get_random_id(),
                 "group_ids": ",".join([str(_group_id) for _group_id in _chunk]),
                 "fields": "contacts"
             })
@@ -843,33 +899,36 @@ def api_get_groups_contacts(_group_ids: list) -> list:
     # Returning.
     return _contacts
 
+
 def api_get_group_links(_group_id: int) -> list:
     # Function that returns group links
-    
+
     # Getting links.
     try:
-        return API.method("groups.getById",{
-            "random_id": vk_api.utils.get_random_id(), 
+        return API.method("groups.getById", {
+            "random_id": vk_api.utils.get_random_id(),
             "group_id": _group_id,
             "fields": "links"
         })[0]["links"]
     except Exception:
         return []
 
+
 def api_send_message(_peer_id: int, _message: str) -> Optional[int]:
     # Function that sends message.
 
     # Sending.
     try:
-        return API.method("messages.send",{
-            "random_id": vk_api.utils.get_random_id(), 
+        return API.method("messages.send", {
+            "random_id": vk_api.utils.get_random_id(),
             "peer_id": _peer_id, "message": _message
         })
     except Exception:
         return None
 
+
 def api_longpoll_listener(_function) -> NoReturn:
-    # Function that listens for longpool.
+    # Function that listens for longpoll.
     for _event in vk_api.longpoll.VkLongPoll(API).listen():
         # For every event in longpoll.
 
@@ -879,7 +938,8 @@ def api_longpoll_listener(_function) -> NoReturn:
             # Calling function.
             _function(_event)
 
-def api_parse_user_foaf(_user_id: int) -> tuple: 
+
+def api_parse_user_foaf(_user_id: int) -> tuple:
     # Function that parses FOAF.
 
     # Getting user FOAF link.
@@ -896,7 +956,7 @@ def api_parse_user_foaf(_user_id: int) -> tuple:
 
     # Created at.
     _created_at = re.findall(r'ya:created dc:date="(.*)"', _user_xml)
-    _created_at =  "" if len(_created_at) == 0 else _created_at[0]
+    _created_at = "" if len(_created_at) == 0 else _created_at[0]
 
     # Logged in at.
     _loggedin_at = re.findall(r'ya:lastLoggedIn dc:date="(.*)"', _user_xml)
@@ -915,9 +975,10 @@ def api_parse_user_foaf(_user_id: int) -> tuple:
     _public_access = "" if len(_profile_state) == 0 else _profile_state[0]
 
     # Returning.
-    return (_created_at, _loggedin_at, _modified_at, _public_access, _profile_state)
+    return _created_at, _loggedin_at, _modified_at, _public_access, _profile_state
 
-def api_get_subscriptions(_user_id: int, _offset: int=0) -> list:
+
+def api_get_subscriptions(_user_id: int, _offset: int = 0) -> list:
     # Function that returns list of subscriptions.
 
     # Max count for request.
@@ -925,8 +986,8 @@ def api_get_subscriptions(_user_id: int, _offset: int=0) -> list:
 
     try:
         # Getting subscriptions.
-        _subscriptions = API.method("users.getSubscriptions",{
-            "random_id": vk_api.utils.get_random_id(), 
+        _subscriptions = API.method("users.getSubscriptions", {
+            "random_id": vk_api.utils.get_random_id(),
             "user_id": _user_id,
             "extended": 1,
             "count": _max_count,
@@ -938,13 +999,14 @@ def api_get_subscriptions(_user_id: int, _offset: int=0) -> list:
 
             # Adding other.
             _subscriptions["items"] = _subscriptions["items"] + api_get_subscriptions(_user_id, _offset + _max_count)
-        
+
         # Returning.
         return _subscriptions["items"]
     except Exception:
         return []
 
-def api_get_groups(_user_id: int, _offset: int=0) -> list:
+
+def api_get_groups(_user_id: int, _offset: int = 0) -> list:
     # Function that returns list of subscriptions.
 
     # Max count for request.
@@ -952,8 +1014,8 @@ def api_get_groups(_user_id: int, _offset: int=0) -> list:
 
     try:
         # Getting subscriptions.
-        _groups = API.method("groups.get",{
-            "random_id": vk_api.utils.get_random_id(), 
+        _groups = API.method("groups.get", {
+            "random_id": vk_api.utils.get_random_id(),
             "user_id": _user_id,
             "extended": 1,
             "count": _max_count,
@@ -965,13 +1027,14 @@ def api_get_groups(_user_id: int, _offset: int=0) -> list:
 
             # Adding other.
             _groups["items"] = _groups["items"] + api_get_groups(_user_id, _offset + _max_count)
-        
+
         # Returning.
         return _groups["items"]
     except Exception:
         return []
 
-def api_get_wall_posts(_user_id: int, _offset: int=0) -> list:
+
+def api_get_wall_posts(_user_id: int, _offset: int = 0) -> list:
     # Function that returns list of wall posts.
 
     # Max count for request.
@@ -979,8 +1042,8 @@ def api_get_wall_posts(_user_id: int, _offset: int=0) -> list:
 
     # Getting subscriptions.
     try:
-        _posts = API.method("wall.get",{
-            "random_id": vk_api.utils.get_random_id(), 
+        _posts = API.method("wall.get", {
+            "random_id": vk_api.utils.get_random_id(),
             "owner_id": _user_id,
             "count": _max_count,
             "offset": _offset,
@@ -991,13 +1054,14 @@ def api_get_wall_posts(_user_id: int, _offset: int=0) -> list:
 
             # Adding other.
             _posts["items"] = _posts["items"] + api_get_wall_posts(_user_id, _offset + _max_count)
-        
+
         # Returning.
-        return  _posts["items"]
+        return _posts["items"]
     except Exception:
         return []
 
-def api_get_post_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list:
+
+def api_get_post_likes(_owner_id: int, _item_id: int, _offset: int = 0) -> list:
     # Function that returns post likes list.
 
     # Max count for request.
@@ -1005,8 +1069,8 @@ def api_get_post_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list:
 
     # Getting likes.
     try:
-        _likes = API.method("likes.getList",{
-            "random_id": vk_api.utils.get_random_id(), 
+        _likes = API.method("likes.getList", {
+            "random_id": vk_api.utils.get_random_id(),
             "type": "post",
             "owner_id": _owner_id,
             "item_id": _item_id,
@@ -1021,46 +1085,51 @@ def api_get_post_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list:
 
             # Adding other.
             _likes["items"] = _likes["items"] + api_get_post_likes(_owner_id, _item_id, _offset + _max_count)
-        
+
         # Returning.
         return _likes["items"]
     except Exception:
         return []
+
 
 def api_chat_create(_user_id: int, _title: str) -> int:
     # Function that creates an new chat.
 
     # Creating chat.
     return API.method("messages.createChat", {
-        "user_ids": _user_id, 
+        "user_ids": _user_id,
         "title": _title
     })
+
 
 def api_chat_delete_history(_chat_id: int) -> int:
     # Function that deletes chat history.
 
     # Deleting.
     return API.method("messages.deleteConversation", {
-        "user_id": _chat_id, 
+        "user_id": _chat_id,
         "peer_id": 2000000000 + _chat_id
     })
+
 
 def api_chat_remove_user(_chat_id: int, _user_id: int) -> Union[bool, int]:
     # Function that removes user from chat.
 
-    # Remvoing user.
+    # Removing user.
     return API.method("messages.removeChatUser", {
-        "chat_id": _chat_id, 
+        "chat_id": _chat_id,
         "user_id": _user_id
     })
 
+
 def api_current_user_id() -> int:
     # Function that returns current user id.
-    
+
     # Returning ID.
     return api_get_user(None, "")["id"]
 
-def api_get_comment_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list:
+
+def api_get_comment_likes(_owner_id: int, _item_id: int, _offset: int = 0) -> list:
     # Function that returns post likes list.
 
     # Max count for request.
@@ -1068,8 +1137,8 @@ def api_get_comment_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list
 
     # Getting likes.
     try:
-        _likes = API.method("likes.getList",{
-            "random_id": vk_api.utils.get_random_id(), 
+        _likes = API.method("likes.getList", {
+            "random_id": vk_api.utils.get_random_id(),
             "type": "comment",
             "owner_id": _owner_id,
             "item_id": _item_id,
@@ -1084,28 +1153,29 @@ def api_get_comment_likes(_owner_id: int, _item_id: int, _offset: int=0) -> list
 
             # Adding other.
             _likes["items"] += api_get_comment_likes(_owner_id, _item_id, _offset + _max_count)
-        
+
         # Returning.
         return _likes["items"]
     except Exception:
         return []
 
-def api_get_post_comments(_owner_id: int, _item_id: int, _offset: int=0) -> list:
+
+def api_get_post_comments(_owner_id: int, _item_id: int, _offset: int = 0) -> list:
     # Function that returns post comments list.
 
     # Max count for request.
     _max_count = 100
 
     # Getting comments.
-    _comments = api_method_safe("wall.getComments",{
-        "random_id": vk_api.utils.get_random_id(), 
+    _comments = api_method_safe("wall.getComments", {
+        "random_id": vk_api.utils.get_random_id(),
         "owner_id": _owner_id,
         "post_id": _item_id,
         "count": _max_count,
         "offset": _offset,
         "thread_items_count": 10,
-        # This is dont work, i DONT KNOW why, in developer panel this have to work as i expect!
-        #"fields": "first_name, last_name",
+        # This is don't work, i DON'T KNOW why, in developer panel this have to work as i expect!
+        # "fields": "first_name, last_name",
         "extended": 1,
         "need_likes": 1
     })
@@ -1121,9 +1191,10 @@ def api_get_post_comments(_owner_id: int, _item_id: int, _offset: int=0) -> list
 
         # Adding other.
         _comments["items"] += api_get_post_comments(_owner_id, _item_id, _offset + _max_count)
-    
+
     # Returning.
     return _comments["items"]
+
 
 def api_method_safe(_method: str, _arguments: dict) -> any:
     # Function that safely executes api method.
@@ -1138,6 +1209,7 @@ def api_method_safe(_method: str, _arguments: dict) -> any:
 
         # Returning none.
         return None
+
 
 # Messages.
 
@@ -1160,17 +1232,18 @@ def message_handler(_event) -> NoReturn:
             # Execute command.
             _command_function(_event.user_id, _event.peer_id, _arguments)
 
+
 # Commands.
 
 def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
     # Function for command analyse.
-    
+
     # Fast disabled by default.
     _fast = False
 
     if len(_arguments) > 0:
         # If argument.
-        
+
         # Getting user id.
         _user_id = _arguments[0]
 
@@ -1179,9 +1252,10 @@ def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
 
             # Setting fast mode.
             _fast = not _fast
-    
+
     # Start message.
-    api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) успешно начат!" + (" (Быстрый режим, анализ друзей, стены отключён)" if _fast else ""))
+    api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) успешно начат!" + (
+        " (Быстрый режим, анализ друзей, стены отключён)" if _fast else ""))
     print(f"[Debug] Analysis https://vk.com/id{_user_id} started!")
 
     # Getting start time.
@@ -1194,15 +1268,17 @@ def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
     api_send_message(_peer_id, f"{_analyse_format_results(_analyse_results, _fast)}")
 
     # End message.
-    api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) закончен! Потрачено: {int(time() - _start_time)}с!")
+    api_send_message(_peer_id,
+                     f"[Анализатор] Анализ @id{_user_id}(профиля) закончен! Потрачено: {int(time() - _start_time)}с!")
     print(f"[Debug] Analysis https://vk.com/id{_user_id} completed! Passed {int(time() - _start_time)}s!")
+
 
 def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that validates phone number.
 
     if len(_arguments) > 0:
         # If argument.
-        
+
         # Getting phone.
         _phone_number = _arguments[0]
     else:
@@ -1215,14 +1291,15 @@ def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list
     except (ValueError, TypeError):
         return api_send_message(_peer_id, f"[Анализатор] Не корректный номер телефона!")
 
-    # Getting phone nubmer data.
+    # Getting phone number data.
     _result = api_validate_phone_number(_phone_number)
 
     if _result is not None and _result != AuthError:
         # If all ok.
 
         # Success.
-        return api_send_message(_peer_id, f"[Анализатор] Страна: {_result['country_name']},\n Локация: {_result['location']},\n Оператор: {_result['carrier']},\n")
+        return api_send_message(_peer_id,
+                                f"[Анализатор] Страна: {_result['country_name']},\n Локация: {_result['location']},\n Оператор: {_result['carrier']},\n")
     else:
         if _result == AuthError:
             # Error.
@@ -1230,6 +1307,7 @@ def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list
         else:
             # Error.
             return api_send_message(_peer_id, f"[Анализатор] Не удалось найти ничего об этом номере!")
+
 
 def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that executes vk method.
@@ -1258,12 +1336,13 @@ def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> int:
             _result: any = eval(f"api_method_safe({_source})")
     except Exception as _exception:
         # If error.
-        
+
         # Exception.
         _result = str(_exception)
 
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор] Результат - {_result}!")
+
 
 def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that floods with conversations.
@@ -1307,8 +1386,9 @@ def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> int:
     except Exception as _exception:
         return api_send_message(_peer_id, f"[Анализатор][Флуд] Ошибка: {_exception}")
 
+
 def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> int:
-    # Function for command that searchs accounts
+    # Function for command that searches accounts
 
     if len(_arguments) == 0:
         # If arguments is not passed.
@@ -1320,7 +1400,9 @@ def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> i
     _accounts = [_account[0] + " = " + _account[1] for _account in api_search_accounts(_arguments[0])]
 
     # Returning.
-    return api_send_message(_peer_id, f"[Анализатор][Аккаунты] Результат для ника {_arguments[0]}:\n" + ",\n".join(_accounts))
+    return api_send_message(_peer_id,
+                            f"[Анализатор][Аккаунты] Результат для ника {_arguments[0]}:\n" + ",\n".join(_accounts))
+
 
 def command_help(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command help
@@ -1335,7 +1417,7 @@ def command_help(_user_id: int, _peer_id: int, _arguments: list) -> int:
         "!номер number,",
         "Делает поиск по номеру телефона (Оператор, регион),",
         "",
-        
+
         "!метод [pycode],",
         "СИСТЕМА исполняет метод в коде,",
         "",
@@ -1360,11 +1442,13 @@ def command_help(_user_id: int, _peer_id: int, _arguments: list) -> int:
         "Показывает список групп владельца лс которые не выкладывали ничего после указанного года (мертвые группы)."
     ]))
 
+
 def command_get_user_index(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command get user index.
 
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор] Индекс профиля: {_user_id},\nИндекс Переписки: {_peer_id}.")
+
 
 def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command groups old.
@@ -1375,7 +1459,7 @@ def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> i
 
     # Max date.
     _date_max = 2021
-    
+
     # Argument.
     if len(_arguments) > 0:
         _date_max = int(_arguments[0])
@@ -1399,13 +1483,13 @@ def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> i
         try:
             # Getting posts.
             _posts = API.method("wall.get", {
-                "random_id": vk_api.utils.get_random_id(), 
-                "owner_id": -_group["id"], 
+                "random_id": vk_api.utils.get_random_id(),
+                "owner_id": -_group["id"],
                 "count": 10
             })["items"]
-        except:
+        except Exception:
             # If error.
-            
+
             # Banned.
             _groups_ban.append(_analyse_format_group(_group["screen_name"], _group["name"]))
             continue
@@ -1444,17 +1528,20 @@ def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> i
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор][Группы]\nСтарые (до {_date_max}):\n{_groups_old},\n Удалены или в бане или пустые:\n{_groups_ban}.")
 
+
 # Other.
+
 
 def chunks(_list: list, _size: int) -> list:
     # Function that chunks list.
     for _index in range(0, len(_list), _size):
         yield _list[_index:_index + _size]
 
+
 # Connecting to the api.
 API = vk_api.VkApi(token=getenv("VK_USER_TOKEN"))
 
-# Key for nubmer verify.
+# Key for number verify.
 # You may get this there: https://numverify.com/
 NUMVERIFY_KEY = getenv("NUMVERIFY_KEY")
 
