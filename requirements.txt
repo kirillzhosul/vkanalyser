@@ -8,3 +8,4 @@ re
 json
 datetime
 typing
+requests

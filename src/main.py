@@ -16,13 +16,15 @@ from vk_api.exceptions import AuthError
 # Parsing FOAF, Number validation.
 import urllib.request
 import re
-import json
 
 # Typing
-from typing import NoReturn, Union, Optional, Type
+from typing import NoReturn, Union, Optional
 
 # Date.
 import datetime
+
+# Importing local module for working with phone.
+import phone
 
 
 # Analyse.
@@ -312,32 +314,30 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
     if _phone_number is not None:
         # If phone number is public.
 
-        # Message.
-        print("[Debug][10][0] Searching for phone number data (Numverify)...")
-
         # Adding phone number.
         _analyse_results["user_phone_number"] = _phone_number
 
-        # Getting phone number data.
-        _result = api_validate_phone_number(_phone_number)
-
-        if _result is not None and _result != AuthError:
-            # If all ok.
+        if phone.is_enabled():
+            # If enabled phones.
 
             # Message.
-            print("[Debug][10][1] Founded phone number (Numverify)...")
+            print("[Debug][10][0] Searching for phone number data (Numverify)...")
 
-            # Adding results.
-            _analyse_results["user_phone_number_validation"] = (
-                _result['country_name'], _result['location'], _result['carrier'])
-        else:
-            if _result == AuthError:
-                # If auth error.
-                _analyse_results["user_phone_number_validation"] = AuthError
+            # Getting phone number data.
+            _result = phone.lookup(_phone_number)
+
+            if _result is not None:
+                # If all ok.
+
+                # Message.
+                print("[Debug][10][1] Founded phone number (Numverify)...")
+
+                # Adding results.
+                _analyse_results["user_phone_number_validation"] = (
+                    _result['country_name'], _result['location'], _result['carrier'])
             else:
                 # Message.
                 print("[Debug][10][2] Not founded any data about this phone number (Numverify)...")
-
     # Message.
     print("[Debug][11] Searching accounts links...")
 
@@ -567,33 +567,23 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
     if _results["user_phone_number"] is not None:
         # If phone exists.
 
-        if _results["user_phone_number_validation"] == AuthError:
-            # If auth error.
+        if _results["user_phone_number_validation"] is None:
+            # If phone validation error.
 
-            # Lines.
+            # Adding.
             _results_lines += [
-                "[+] Телефон: {0} (Авторизуйтесь для анализа)".format(_results["user_phone_number"])
+                "[+] Телефон: {0}".format(_results["user_phone_number"])
             ]
         else:
-            # If not auth error.
+            # If phone validated.
 
-            if _results["user_phone_number_validation"] is None:
-                # If phone validation error.
-
-                # Adding.
-                _results_lines += [
-                    "[+] Телефон: {0}".format(_results["user_phone_number"])
-                ]
-            else:
-                # If phone validated.
-
-                # Adding.
-                _results_lines += [
-                    "[+] Телефон: {0} ({1} {2} {3})".format(_results["user_phone_number"],
-                                                            _results["user_phone_number_validation"][0],
-                                                            _results["user_phone_number_validation"][1],
-                                                            _results["user_phone_number_validation"][2]),
-                ]
+            # Adding.
+            _results_lines += [
+                "[+] Телефон: {0} ({1} {2} {3})".format(_results["user_phone_number"],
+                                                        _results["user_phone_number_validation"][0],
+                                                        _results["user_phone_number_validation"][1],
+                                                        _results["user_phone_number_validation"][2]),
+            ]
 
     # Wall.
     if not _fast:
@@ -804,36 +794,6 @@ def api_search_accounts(_nickname: str) -> list:
 
     # Returning.
     return _accounts
-
-
-def api_validate_phone_number(_number: int) -> Union[Type[AuthError], dict, None]:
-    # Function that validates phone number and returns it to you.
-
-    if NUMVERIFY_KEY is None:
-        # If not set numverify key.
-
-        # Returning.
-        return AuthError
-
-    # Getting link.
-    _link = f"http://apilayer.net/api/validate?access_key={NUMVERIFY_KEY}&number={_number}&country_code=&format=1"
-
-    with urllib.request.urlopen(_link) as _response:
-        # Opening.
-
-        # Getting response.
-        _result = _response.read()
-        _result = json.loads(_result)
-
-        if "error" in _result or not _result["valid"]:
-            # If invalid 
-
-            # Returning invalid.
-            return None
-
-        # Returning result.
-        return _result
-
 
 def api_get_user(_user_id: Union[int, None], _fields: Optional[str] = None) -> Optional[dict]:
     # Function that returns user data.
@@ -1276,6 +1236,12 @@ def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
 def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command that validates phone number.
 
+    if not phone.is_enabled():
+        # If not enabled.
+
+        # Error.
+        return api_send_message(_peer_id, f"[Анализатор] Работа с номерами отключена, включите работу в модуле phone.")
+
     if len(_arguments) > 0:
         # If argument.
 
@@ -1292,21 +1258,17 @@ def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list
         return api_send_message(_peer_id, f"[Анализатор] Не корректный номер телефона!")
 
     # Getting phone number data.
-    _result = api_validate_phone_number(_phone_number)
+    _result = phone.lookup(_phone_number)
 
-    if _result is not None and _result != AuthError:
+    if _result is not None:
         # If all ok.
 
         # Success.
         return api_send_message(_peer_id,
                                 f"[Анализатор] Страна: {_result['country_name']},\n Локация: {_result['location']},\n Оператор: {_result['carrier']},\n")
     else:
-        if _result == AuthError:
-            # Error.
-            return api_send_message(_peer_id, f"[Анализатор] Ошибка авторизации! Добавьте ключ в настройке!")
-        else:
-            # Error.
-            return api_send_message(_peer_id, f"[Анализатор] Не удалось найти ничего об этом номере!")
+        # Error.
+        return api_send_message(_peer_id, f"[Анализатор] Не удалось найти ничего об этом номере!")
 
 
 def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> int:
@@ -1541,10 +1503,6 @@ def chunks(_list: list, _size: int) -> list:
 # Connecting to the api.
 API = vk_api.VkApi(token=getenv("VK_USER_TOKEN"))
 
-# Key for number verify.
-# You may get this there: https://numverify.com/
-NUMVERIFY_KEY = getenv("NUMVERIFY_KEY")
-
 # Commands.
 COMMANDS = {
     "!анализ": command_analyse,
@@ -1556,13 +1514,6 @@ COMMANDS = {
     "!группы_мусорные": command_groups_show_old,
     "!индекс": command_get_user_index,
 }
-
-# Message.
-if NUMVERIFY_KEY is None:
-    # If key is not set.
-
-    # Message.
-    print("[Debug] Numverify key is not set! Please add key if you want to analyse phone numbers!")
 
 # Message.
 print("[Debug] Launched!")
