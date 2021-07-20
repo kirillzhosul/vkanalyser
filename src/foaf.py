@@ -45,6 +45,7 @@ class ProfileAccess(enum.Enum):
 
 # Functions.
 
+
 def get(_profile_index: int) -> dict:
     # Function that gets vk profile data.
 

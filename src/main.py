@@ -1,5 +1,4 @@
 # Importing time for measure time.
-import urllib.request
 from time import time, sleep
 
 # Import get env.
@@ -22,7 +21,7 @@ import datetime
 # Importing local modules.
 import phone
 import foaf
-
+import accounts
 
 # Analyse.
 
@@ -339,7 +338,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
     print("[Debug][11] Searching accounts links...")
 
     # Accounts search.
-    _analyse_results["potential_links"] = api_search_accounts(_current_user["screen_name"])
+    _analyse_results["potential_links"] = accounts.search(_current_user["screen_name"])
 
     for _group in _analyse_results["user_admin_groups"]:
         # For every group.
@@ -349,7 +348,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             continue
 
         # Accounts search.
-        _analyse_results["potential_links"] += api_search_accounts(_group[1])
+        _analyse_results["potential_links"] += accounts.search(_group[1])
 
     # Getting only formatted.
     _analyse_results["user_admin_groups"] = [_group[2] for _group in _analyse_results["user_admin_groups"]]
@@ -682,115 +681,6 @@ def api_get_id_from_screen_name(_screen_name: str) -> Optional[int]:
     except Exception:
         return None
 
-
-def api_search_accounts(_nickname: str) -> list:
-    # Function that search for account in other social networks.
-
-    def __exists(_link: str, _timeout: int = 2) -> bool:
-        # Function that check is 404 or not.
-
-        # Returning.
-        try:
-            return urllib.request.urlopen(urllib.request.Request(_link, headers={'User-Agent': 'VK Analyser'}),
-                                          timeout=_timeout).status != 404
-        except:
-            return False
-
-    def __instagram() -> Optional[tuple]:
-        # Instagram account.
-
-        # Getting url.
-        _url = f"https://www.instagram.com/{_nickname}/"
-
-        # Returning.
-        return ("Instagram", _url) if __exists(_url, 5) else None
-
-    def __facebook() -> Optional[tuple]:
-        # Facebook account.
-
-        # Getting url.
-        _url = f"https://www.facebook.com/{_nickname}/"
-
-        # Returning.
-        return ("Facebook", _url) if __exists(_url, 3) else None
-
-    def __tiktok() -> Optional[tuple]:
-        # Tiktok account.
-
-        # Getting url.
-        _url = f"https://www.tiktok.com/@{_nickname}?"
-
-        # Returning.
-        return ("TikTok", _url) if __exists(_url, 5) else None
-
-    def __odnoklassniki() -> Optional[tuple]:
-        # Odnoklassniki account.
-
-        # Getting url.
-        _url = f"https://ok.ru/{_nickname}"
-
-        # Returning.
-        return ("OK", _url) if __exists(_url, 2) else None
-
-    def __github() -> Optional[tuple]:
-        # Github account.
-
-        # Getting url.
-        _url = f"https://github.com/{_nickname}"
-
-        # Returning.
-        return ("Github", _url) if __exists(_url, 4) else None
-
-    def __steam() -> Optional[tuple]:
-        # Steam account.
-
-        # Getting url.
-        _url = f"https://steamcommunity.com/id/{_nickname}"
-
-        # Returning.
-        return ("Steam", _url) if __exists(_url, 5) else None
-
-    def __twitter() -> Optional[tuple]:
-        # Twitter account.
-
-        # Getting url.
-        _url = f"https://twitter.com/{_nickname}"
-
-        # Returning.
-        return ("Twitter", _url) if __exists(_url, 3) else None
-
-    def __twitch() -> Optional[tuple]:
-        # Twitch account.
-
-        # Getting url.
-        _url = f"https://www.twitch.tv/{_nickname}"
-
-        # Returning.
-        return ("Twitch", _url) if __exists(_url, 2) else None
-
-    def __youtube() -> Optional[tuple]:
-        # YouTube account.
-
-        # Getting url.
-        _url = f"https://www.youtube.com/user/{_nickname}"
-
-        # Returning.
-        return ("OK", _url) if __exists(_url, 2) else None
-
-    def __search() -> list:
-        # Function that searches for accounts.
-
-        # Don't returns 404:
-        # __twitch(), __steam(), __twitter()
-
-        # Returning.
-        return [__tiktok(), __instagram(), __facebook(), __odnoklassniki(), __youtube(), __github()]
-
-    # Getting accounts.
-    _accounts = [_account for _account in __search() if _account is not None]
-
-    # Returning.
-    return _accounts
 
 def api_get_user(_user_id: Union[int, None], _fields: Optional[str] = None) -> Optional[dict]:
     # Function that returns user data.
@@ -1316,7 +1206,7 @@ def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> i
         return api_send_message(_peer_id, "[Анализатор][Аккаунты] Вы не указали ник для поиска!")
 
     # Getting accounts.
-    _accounts = [_account[0] + " = " + _account[1] for _account in api_search_accounts(_arguments[0])]
+    _accounts = [_account[0] + " = " + _account[1] for _account in accounts.search(_arguments[0])]
 
     # Returning.
     return api_send_message(_peer_id,
