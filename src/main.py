@@ -1,4 +1,5 @@
 # Importing time for measure time.
+import urllib.request
 from time import time, sleep
 
 # Import get env.
@@ -11,11 +12,6 @@ from random import randint
 import vk_api
 import vk_api.utils
 import vk_api.longpoll
-from vk_api.exceptions import AuthError
-
-# Parsing FOAF, Number validation.
-import urllib.request
-import re
 
 # Typing
 from typing import NoReturn, Union, Optional
@@ -23,8 +19,9 @@ from typing import NoReturn, Union, Optional
 # Date.
 import datetime
 
-# Importing local module for working with phone.
+# Importing local modules.
 import phone
+import foaf
 
 
 # Analyse.
@@ -35,7 +32,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
 
     # Getting FOAF results.
     print("[Debug][0] Loading user FOAF (foaf.php)...")
-    _foaf_results = api_parse_user_foaf(_user_id)
+    _foaf_results = foaf.get(_user_id)
 
     # Getting current user.
     print("[Debug][1] Loading user data...")
@@ -105,11 +102,11 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         "user_sex": "Мужской" if _current_user["sex"] == 2 else (
             "Женский" if _current_user["sex"] == 1 else "Не указан"),
         "user_index": _user_id,
-        "user_registered_at": _foaf_results[0],
-        "user_last_logged_in_at": _foaf_results[1],
-        "user_modified_at": _foaf_results[2],
-        "user_public_access": "открыт" if _foaf_results[3] == "allowed" else "закрыт",
-        "user_is_active": "активный" if _foaf_results[4] == "active" else "деактивирован",
+        "user_registered_at": _foaf_results["date_created"],
+        "user_last_logged_in_at": _foaf_results["date_logged"],
+        "user_modified_at": _foaf_results["date_modified"],
+        "user_public_access": "открыт" if _foaf_results["flag_access"] == foaf.ProfileAccess.allowed else "закрыт",
+        "user_is_active": "активный" if _foaf_results["flag_state"] == foaf.ProfileState.active else "деактивирован",
     }
 
     if not _fast and len(_friends_ids) != 0:
@@ -897,46 +894,6 @@ def api_longpoll_listener(_function) -> NoReturn:
 
             # Calling function.
             _function(_event)
-
-
-def api_parse_user_foaf(_user_id: int) -> tuple:
-    # Function that parses FOAF.
-
-    # Getting user FOAF link.
-    _user_foaf_link = f"https://vk.com/foaf.php?id={_user_id}"
-    _user_foaf_code = "windows-1251"
-
-    with urllib.request.urlopen(_user_foaf_link) as _response:
-        # Opening.
-
-        # Getting XML, decoding.
-        _user_xml = _response.read().decode(_user_foaf_code)
-
-    # Parsing xml.
-
-    # Created at.
-    _created_at = re.findall(r'ya:created dc:date="(.*)"', _user_xml)
-    _created_at = "" if len(_created_at) == 0 else _created_at[0]
-
-    # Logged in at.
-    _loggedin_at = re.findall(r'ya:lastLoggedIn dc:date="(.*)"', _user_xml)
-    _loggedin_at = "Скрыто через VK Me" if len(_loggedin_at) == 0 else _loggedin_at[0]
-
-    # Modified at.
-    _modified_at = re.findall(r'ya:modified dc:date="(.*)"', _user_xml)
-    _modified_at = "" if len(_modified_at) == 0 else _modified_at[0]
-
-    # Public access.
-    _public_access = re.findall(r'<ya:publicAccess>(.*)</ya:publicAccess>', _user_xml)
-    _public_access = "" if len(_public_access) == 0 else _public_access[0]
-
-    # Profile state.
-    _profile_state = re.findall(r'<ya:profileState>(.*)</ya:profileState>', _user_xml)
-    _public_access = "" if len(_profile_state) == 0 else _profile_state[0]
-
-    # Returning.
-    return _created_at, _loggedin_at, _modified_at, _public_access, _profile_state
-
 
 def api_get_subscriptions(_user_id: int, _offset: int = 0) -> list:
     # Function that returns list of subscriptions.
