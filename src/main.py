@@ -22,6 +22,7 @@ import datetime
 import phone
 import foaf
 import accounts
+import utils
 
 # Analyse.
 
@@ -149,7 +150,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 # If namesakes.
 
                 # Formatting user.
-                _user_formatted = _analyse_format_user(_friend_data["id"], _friend_data["first_name"],
+                _user_formatted = utils.get_user_mention(_friend_data["id"], _friend_data["first_name"],
                                                        _friend_data["last_name"])
 
                 if _user_formatted not in _analyse_results["user_potential_relatives"]:
@@ -249,7 +250,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 # For every user in wall likes.
 
                 # Formatting user.
-                _user_formatted = _analyse_format_user(_user["id"], _user["first_name"], _user["last_name"])
+                _user_formatted = utils.get_user_mention(_user["id"], _user["first_name"], _user["last_name"])
 
                 if _user["last_name"] == _current_user["last_name"] or \
                         _user["last_name"] + "а" == _current_user["last_name"] or \
@@ -375,7 +376,7 @@ def _analyse_search_admin(_user_id) -> list:
             # For every contact.
 
             # Formatting.
-            _group_formatted = _analyse_format_group(_group["screen_name"], _group["name"])
+            _group_formatted = utils.get_group_mention(_group["screen_name"], _group["name"])
 
             # Adding groups.
             _result.append((_group["id"], _group["screen_name"], _group_formatted))
@@ -479,7 +480,7 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
 
         # Getting comment.
         _result = [{
-            "from": _analyse_format_user(_comment["from_id"], _author["first_name"], _author["last_name"]),
+            "from": utils.get_user_mention(_comment["from_id"], _author["first_name"], _author["last_name"]),
             "from_last_name": _author["last_name"],
             "likes": [],
             "from_id": _comment["from_id"]
@@ -499,7 +500,7 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
 
                 # Adding.
                 _result[0]["likes"].append(
-                    _analyse_format_user(_liker["id"], _liker["first_name"], _liker["last_name"]))
+                    utils.get_user_mention(_liker["id"], _liker["first_name"], _liker["last_name"]))
 
         if "thread" in _comment and _comment["thread"]["count"] > 0:
             # If thread not null-size.
@@ -653,18 +654,6 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
     return ",\n".join([_line for _line in _results_lines if _line != ""])
 
 
-def _analyse_format_user(_id: int, _first_name: str, _last_name: str) -> str:
-    # Function that format user link.
-
-    # Returning formatted.
-    return f"@id{_id}({_first_name} {_last_name})"
-
-
-def _analyse_format_group(_screen_name: int, _group_name: str) -> str:
-    # Function that format group link.
-
-    # Returning formatted.
-    return f"@{_screen_name}({_group_name})"
 
 
 # API.
@@ -724,7 +713,7 @@ def api_get_groups_contacts(_group_ids: list) -> list:
     # Getting contacts.
     _contacts = []
 
-    for _chunk in list(chunks(_group_ids, 500)):
+    for _chunk in list(utils.chunks(_group_ids, 500)):
         # For every chunk with size 500.
 
         # Getting contacts.
@@ -1300,14 +1289,14 @@ def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> i
             # If error.
 
             # Banned.
-            _groups_ban.append(_analyse_format_group(_group["screen_name"], _group["name"]))
+            _groups_ban.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
             continue
 
         if len(_posts) == 0:
             # If no posts.
 
             # Banned.
-            _groups_ban.append(_analyse_format_group(_group["screen_name"], _group["name"]))
+            _groups_ban.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
             continue
 
         # Date max iteration.
@@ -1328,7 +1317,7 @@ def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> i
             # If old.
 
             # Old.
-            _groups_old.append(_analyse_format_group(_group["screen_name"], _group["name"]))
+            _groups_old.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
 
     # Formatting.
     _groups_old = ", ".join(_groups_old)
@@ -1336,15 +1325,6 @@ def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> i
 
     # Returning.
     return api_send_message(_peer_id, f"[Анализатор][Группы]\nСтарые (до {_date_max}):\n{_groups_old},\n Удалены или в бане или пустые:\n{_groups_ban}.")
-
-
-# Other.
-
-
-def chunks(_list: list, _size: int) -> list:
-    # Function that chunks list.
-    for _index in range(0, len(_list), _size):
-        yield _list[_index:_index + _size]
 
 
 # Connecting to the api.
