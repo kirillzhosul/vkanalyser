@@ -32,6 +32,12 @@ class ProfileState(enum.Enum):
     # Deactivated profile.
     deactivated = "deactivated",
 
+    # Verified profile.
+    verified = "verified"
+
+    # Deleted profile.
+    deleted = "deleted"
+
 
 class ProfileAccess(enum.Enum):
     # Profile access types.
@@ -49,12 +55,20 @@ class ProfileAccess(enum.Enum):
 def get(_profile_index: int) -> dict:
     # Function that gets vk profile data.
 
+    # Raising type error.
+    if type(_profile_index) != int:
+        raise TypeError("Profile index should be int!")
+
     # Returning parsed.
     return parse(load(int(_profile_index)))
 
 
 def parse(_foaf: str) -> typing.Optional[dict]:
     # Function that parses FOAF.
+
+    # Raising type error.
+    if type(_foaf) != str:
+        raise TypeError("FOAF data should be str!")
 
     def __parse_field(_pattern: str, _default: str = "") -> str:
         # Sub function for parsing field.
@@ -91,6 +105,10 @@ def parse(_foaf: str) -> typing.Optional[dict]:
 
 def load(_profile_index: int) -> str:
     # Function that loads FOAF XML data from VK.
+
+    # Raising type error.
+    if type(_profile_index) != int:
+        raise TypeError("Profile index should be int!")
 
     if int(_profile_index) <= 0:
         # If profile invalid.
