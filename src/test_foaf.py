@@ -32,7 +32,7 @@ class Test(TestCase):
 
         # Raises Type error?
         with self.assertRaises(TypeError):
-            foaf.get("string")
+            foaf.get("string") # noqa
 
     def test_parse(self):
         # Testing foaf.parse()
@@ -42,7 +42,7 @@ class Test(TestCase):
 
         # Raises Type error?
         with self.assertRaises(TypeError):
-            foaf.parse(1)
+            foaf.parse(1) # noqa
 
     def test_load(self):
         # Testing foaf.load()
@@ -53,7 +53,7 @@ class Test(TestCase):
 
         # Raises Type error?
         with self.assertRaises(TypeError):
-            foaf.load("string")
+            foaf.load("string") # noqa
 
     def test_profile_state(self):
         # Testing foaf.ProfileState enum.

@@ -18,6 +18,19 @@ def get_group_mention(_screen_name: str, _group_name: str) -> str:
     return f"@{_screen_name}({_group_name})"
 
 
+def chat_to_peer_id(_chat_id: int) -> int:
+    # Function that converts chat id to peer id.
+
+    if _chat_id < 0:
+        # If negative.
+
+        # Value Error.
+        raise ValueError("Not allowed to use negative numbers!")
+
+    # Returning.
+    return 2000000000 + _chat_id
+
+
 def chunks(_list: list, _size: int) -> list:
     # Function that chunks list.
 
