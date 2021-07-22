@@ -1,19 +1,8 @@
 # Importing time for measure time.
 from time import time, sleep
 
-# Import get env.
-from os import getenv
-
 # Importing random
 from random import randint
-
-# Importing VK API.
-import vk_api
-import vk_api.utils
-import vk_api.longpoll
-
-# Typing
-from typing import NoReturn, Union, Optional
 
 # Date.
 import datetime
@@ -23,6 +12,7 @@ import phone
 import foaf
 import accounts
 import utils
+import vk
 
 # Analyse.
 
@@ -30,22 +20,27 @@ import utils
 def _analyse_user(_user_id: int, _fast: bool) -> dict:
     # Function that analyses page.
 
+    _user_id = int(_user_id)
+
     # Getting FOAF results.
     print("[Debug][0] Loading user FOAF (foaf.php)...")
     _foaf_results = foaf.get(_user_id)
 
     # Getting current user.
     print("[Debug][1] Loading user data...")
-    _current_user = api_get_user(_user_id)
+    _current_user = vk.api_users_get(_user_id)
     _counters = _current_user["counters"]
 
     # Getting subscriptions.
     print("[Debug][2] Loading user subscriptions...")
-    _subscriptions = api_get_subscriptions(_user_id)
+    _subscriptions = vk.api_users_get_subscriptions(_user_id)
 
     # Getting friends IDs.
     print("[Debug][3] Loading friends list...")
-    _friends_ids = api_get_friends(_user_id)
+    _friends_ids = vk.api_friends_get(_user_id)
+
+    if _friends_ids is None:
+        _friends_ids = []
 
     # Analyse results.
     print("[Debug][5] Making default analyse result...")
@@ -61,7 +56,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         "user_gifts": _counters["gifts"] if "gifts" in _counters else 0,
         "user_followers": _counters["followers"] if "followers" in _counters else 0,
         "user_audios": _counters["audios"] if "audios" in _counters else 0,
-        "user_is_closed": "закрытый" if _current_user["is_closed"] else "окрытый",
+        "user_is_closed": "закрытый" if _current_user["is_closed"] else "открытый",
         "friends_deactivated": 0,
         "friends_closed": 0,
         "friends_verified": 0,
@@ -90,7 +85,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         "user_phone_number_validation": None,
         "user_phone_number": None,
         "user_subscriptions_count": len(_subscriptions),
-        "user_subscriptions_groups": len(api_get_groups(_user_id)),
+        "user_subscriptions_groups": len(vk.api_groups_get(_user_id)),
         "user_subscriptions_pages": len(
             [_subscription for _subscription in _subscriptions if _subscription["type"] == "page"]),
         "user_subscriptions_events": len(
@@ -122,7 +117,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             print(f"[Debug][6][1] Processing friend... ({_counter} / {_counted})")
 
             # Getting friend data.
-            _friend_data = api_get_user(_friend_id)
+            _friend_data = vk.api_users_get(_friend_id)
 
             if _friend_data is None:
                 # If invalid user.
@@ -180,7 +175,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
         # If user is not closed and not fast.
 
         # Getting all wall posts.
-        _wall_posts = api_get_wall_posts(_user_id)
+        _wall_posts = vk.api_wall_get(_user_id)
 
         # Message.
         _, _counter, _counted = print("[Debug][7][0] Processing wall posts..."), 0, len(_wall_posts)
@@ -200,8 +195,8 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             _analyse_results["user_wall_views"] += _wall_post["views"]["count"] if "views" in _wall_post else 0
 
             # Getting likes and comments.
-            _wall_likes = api_get_post_likes(_wall_post["owner_id"], _wall_post["id"])
-            _wall_comments = api_get_post_comments(_wall_post["owner_id"], _wall_post["id"])
+            _wall_likes = vk.api_likes_get_list(_wall_post["owner_id"], _wall_post["id"], "post")
+            _wall_comments = vk.api_wall_get_comments(_wall_post["owner_id"], _wall_post["id"])
 
             for _comment in _analyse_parse_comments(_wall_comments):
                 # For every comment in parsed.
@@ -411,7 +406,7 @@ def _analyse_search_admin(_user_id) -> list:
 
     # TODO: Should remove one of this loops?
 
-    _groups = [_group for _group in api_get_groups(_user_id) if "contacts" in _group]
+    _groups = [_group for _group in vk.api_groups_get(_user_id) if "contacts" in _group]
     for _group in _groups:
         # For every group.
 
@@ -424,14 +419,25 @@ def _analyse_search_admin(_user_id) -> list:
     for _group in _result:
         # For every group.
 
-        for _link in [_link for _link in api_get_group_links(_group[0]) if "vk.com/" in _link["url"]]:
+        _links = vk.api_groups_get_by_id([_group[0]], "links")[0]["links"]
+
+        if _links is None:
+            continue
+
+        for _link in [_link for _link in _links if "vk.com/" in _link["url"]]:
             # For every link on vk.
 
             # Getting screen name.
             _screen_name = _link["url"].split("/")[-1]
 
-            # Checking admin there.
-            __process_group(api_get_groups_contacts([api_get_id_from_screen_name(_screen_name)])[0])
+            # Getting contacts.
+            _group = vk.api_groups_get_by_id([vk.api_utils_resolve_screen_name(_screen_name)], "contacts")
+
+            if _group is not None:
+                # If not none.
+
+                # Checking admin there.
+                __process_group(_group[0])
 
     # Deleting repeating.
     _result = list(set(_result))
@@ -457,7 +463,7 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
             # If not cached.
 
             # Getting author.
-            _author = api_get_user(_comment["from_id"])
+            _author = vk.api_users_get(_comment["from_id"])
 
             # Adding in cache.
             _cached_authors[_comment["from_id"]] = _author
@@ -493,7 +499,7 @@ def _analyse_parse_comments(_wall_comments: list) -> list:
             _comment_id = _comment["id"]
 
             # Getting likes
-            _likes = api_get_comment_likes(_comment["owner_id"], _comment_id)
+            _likes = vk.api_likes_get_list(_comment["owner_id"], _comment_id, "comment")
 
             for _liker in _likes:
                 # For every user who left like.
@@ -654,362 +660,10 @@ def _analyse_format_results(_results: dict, _fast: bool) -> str:
     return ",\n".join([_line for _line in _results_lines if _line != ""])
 
 
-
-
-# API.
-
-def api_get_id_from_screen_name(_screen_name: str) -> Optional[int]:
-    # Function that returns id from screen name.
-
-    try:
-        # Getting id.
-        return API.method("utils.resolveScreenName", {
-            "random_id": vk_api.utils.get_random_id(),
-            "screen_name": _screen_name,
-        })["object_id"]
-    except Exception:
-        return None
-
-
-def api_get_user(_user_id: Union[int, None], _fields: Optional[str] = None) -> Optional[dict]:
-    # Function that returns user data.
-
-    if _fields is None:
-        # If fields is not set.
-
-        # Setting fields.
-        _fields = "counters, sex, verified, bdate, contacts, screen_name"
-
-    try:
-        # Getting user.
-        return API.method("users.get", {
-            "random_id": vk_api.utils.get_random_id(),
-            "user_ids": _user_id,
-            "fields": _fields
-        })[0]
-    except Exception:
-        return None
-
-
-def api_get_friends(_user_id: int) -> Union[list]:
-    # Function that returns friends list and count,
-
-    # Getting friends.
-    try:
-        _friends = API.method("friends.get", {
-            "random_id": vk_api.utils.get_random_id(),
-            "user_id": _user_id
-        })
-
-        # Returning.
-        return _friends["items"]
-    except Exception:
-        return []
-
-
-def api_get_groups_contacts(_group_ids: list) -> list:
-    # Function that returns groups contacts
-
-    # Getting contacts.
-    _contacts = []
-
-    for _chunk in list(utils.chunks(_group_ids, 500)):
-        # For every chunk with size 500.
-
-        # Getting contacts.
-        try:
-            _current_contacts = API.method("groups.getById", {
-                "random_id": vk_api.utils.get_random_id(),
-                "group_ids": ",".join([str(_group_id) for _group_id in _chunk]),
-                "fields": "contacts"
-            })
-        except Exception:
-            _current_contacts = []
-
-        for _group in _current_contacts:
-            # For every group.
-
-            # Adding.
-            _contacts.append(_group)
-
-    # Returning.
-    return _contacts
-
-
-def api_get_group_links(_group_id: int) -> list:
-    # Function that returns group links
-
-    # Getting links.
-    try:
-        return API.method("groups.getById", {
-            "random_id": vk_api.utils.get_random_id(),
-            "group_id": _group_id,
-            "fields": "links"
-        })[0]["links"]
-    except Exception:
-        return []
-
-
-def api_send_message(_peer_id: int, _message: str) -> Optional[int]:
-    # Function that sends message.
-
-    # Sending.
-    try:
-        return API.method("messages.send", {
-            "random_id": vk_api.utils.get_random_id(),
-            "peer_id": _peer_id, "message": _message
-        })
-    except Exception:
-        return None
-
-
-def api_longpoll_listener(_function) -> NoReturn:
-    # Function that listens for longpoll.
-    for _event in vk_api.longpoll.VkLongPoll(API).listen():
-        # For every event in longpoll.
-
-        if _event.type == vk_api.longpoll.VkEventType.MESSAGE_NEW:
-            # If new message.
-
-            # Calling function.
-            _function(_event)
-
-def api_get_subscriptions(_user_id: int, _offset: int = 0) -> list:
-    # Function that returns list of subscriptions.
-
-    # Max count for request.
-    _max_count = 200
-
-    try:
-        # Getting subscriptions.
-        _subscriptions = API.method("users.getSubscriptions", {
-            "random_id": vk_api.utils.get_random_id(),
-            "user_id": _user_id,
-            "extended": 1,
-            "count": _max_count,
-            "offset": _offset,
-        })
-
-        if _subscriptions["count"] - (_offset + _max_count) > 0:
-            # If not all.
-
-            # Adding other.
-            _subscriptions["items"] = _subscriptions["items"] + api_get_subscriptions(_user_id, _offset + _max_count)
-
-        # Returning.
-        return _subscriptions["items"]
-    except Exception:
-        return []
-
-
-def api_get_groups(_user_id: int, _offset: int = 0) -> list:
-    # Function that returns list of subscriptions.
-
-    # Max count for request.
-    _max_count = 200
-
-    try:
-        # Getting subscriptions.
-        _groups = API.method("groups.get", {
-            "random_id": vk_api.utils.get_random_id(),
-            "user_id": _user_id,
-            "extended": 1,
-            "count": _max_count,
-            "offset": _offset,
-            "fields": "contacts"
-        })
-        if _groups["count"] - (_offset + _max_count) > 0:
-            # If not all.
-
-            # Adding other.
-            _groups["items"] = _groups["items"] + api_get_groups(_user_id, _offset + _max_count)
-
-        # Returning.
-        return _groups["items"]
-    except Exception:
-        return []
-
-
-def api_get_wall_posts(_user_id: int, _offset: int = 0) -> list:
-    # Function that returns list of wall posts.
-
-    # Max count for request.
-    _max_count = 100
-
-    # Getting subscriptions.
-    try:
-        _posts = API.method("wall.get", {
-            "random_id": vk_api.utils.get_random_id(),
-            "owner_id": _user_id,
-            "count": _max_count,
-            "offset": _offset,
-        })
-
-        if _posts["count"] - (_offset + _max_count) > 0:
-            # If not all.
-
-            # Adding other.
-            _posts["items"] = _posts["items"] + api_get_wall_posts(_user_id, _offset + _max_count)
-
-        # Returning.
-        return _posts["items"]
-    except Exception:
-        return []
-
-
-def api_get_post_likes(_owner_id: int, _item_id: int, _offset: int = 0) -> list:
-    # Function that returns post likes list.
-
-    # Max count for request.
-    _max_count = 1000
-
-    # Getting likes.
-    try:
-        _likes = API.method("likes.getList", {
-            "random_id": vk_api.utils.get_random_id(),
-            "type": "post",
-            "owner_id": _owner_id,
-            "item_id": _item_id,
-            "filter": "likes",
-            "count": _max_count,
-            "offset": _offset,
-            "extended": 1,
-        })
-
-        if _likes["count"] - (_offset + _max_count) > 0:
-            # If not all.
-
-            # Adding other.
-            _likes["items"] = _likes["items"] + api_get_post_likes(_owner_id, _item_id, _offset + _max_count)
-
-        # Returning.
-        return _likes["items"]
-    except Exception:
-        return []
-
-
-def api_chat_create(_user_id: int, _title: str) -> int:
-    # Function that creates an new chat.
-
-    # Creating chat.
-    return API.method("messages.createChat", {
-        "user_ids": _user_id,
-        "title": _title
-    })
-
-
-def api_chat_delete_history(_chat_id: int) -> int:
-    # Function that deletes chat history.
-
-    # Deleting.
-    return API.method("messages.deleteConversation", {
-        "user_id": _chat_id,
-        "peer_id": 2000000000 + _chat_id
-    })
-
-
-def api_chat_remove_user(_chat_id: int, _user_id: int) -> Union[bool, int]:
-    # Function that removes user from chat.
-
-    # Removing user.
-    return API.method("messages.removeChatUser", {
-        "chat_id": _chat_id,
-        "user_id": _user_id
-    })
-
-
-def api_current_user_id() -> int:
-    # Function that returns current user id.
-
-    # Returning ID.
-    return api_get_user(None, "")["id"]
-
-
-def api_get_comment_likes(_owner_id: int, _item_id: int, _offset: int = 0) -> list:
-    # Function that returns post likes list.
-
-    # Max count for request.
-    _max_count = 1000
-
-    # Getting likes.
-    try:
-        _likes = API.method("likes.getList", {
-            "random_id": vk_api.utils.get_random_id(),
-            "type": "comment",
-            "owner_id": _owner_id,
-            "item_id": _item_id,
-            "filter": "likes",
-            "count": _max_count,
-            "offset": _offset,
-            "extended": 1,
-        })
-
-        if _likes["count"] - (_offset + _max_count) > 0:
-            # If not all.
-
-            # Adding other.
-            _likes["items"] += api_get_comment_likes(_owner_id, _item_id, _offset + _max_count)
-
-        # Returning.
-        return _likes["items"]
-    except Exception:
-        return []
-
-
-def api_get_post_comments(_owner_id: int, _item_id: int, _offset: int = 0) -> list:
-    # Function that returns post comments list.
-
-    # Max count for request.
-    _max_count = 100
-
-    # Getting comments.
-    _comments = api_method_safe("wall.getComments", {
-        "random_id": vk_api.utils.get_random_id(),
-        "owner_id": _owner_id,
-        "post_id": _item_id,
-        "count": _max_count,
-        "offset": _offset,
-        "thread_items_count": 10,
-        # This is don't work, i DON'T KNOW why, in developer panel this have to work as i expect!
-        # "fields": "first_name, last_name",
-        "extended": 1,
-        "need_likes": 1
-    })
-
-    if _comments is None:
-        # If error.
-
-        # Returning.
-        return []
-
-    if _comments["count"] - (_offset + _max_count) > 0:
-        # If not all.
-
-        # Adding other.
-        _comments["items"] += api_get_post_comments(_owner_id, _item_id, _offset + _max_count)
-
-    # Returning.
-    return _comments["items"]
-
-
-def api_method_safe(_method: str, _arguments: dict) -> any:
-    # Function that safely executes api method.
-
-    try:
-        # Trying to execute.
-
-        # Executing and returning.
-        return API.method(_method, _arguments)
-    except Exception:
-        # If error.
-
-        # Returning none.
-        return None
-
-
 # Messages.
 
-def message_handler(_event) -> NoReturn:
+
+def message_handler(_event) -> None:
     # Function that handles message.
 
     # Getting arguments.
@@ -1031,7 +685,8 @@ def message_handler(_event) -> NoReturn:
 
 # Commands.
 
-def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
+
+def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> None:
     # Function for command analyse.
 
     # Fast disabled by default.
@@ -1050,7 +705,7 @@ def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
             _fast = not _fast
 
     # Start message.
-    api_send_message(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) успешно начат!" + (
+    vk.api_messages_send(_peer_id, f"[Анализатор] Анализ @id{_user_id}(профиля) успешно начат!" + (
         " (Быстрый режим, анализ друзей, стены отключён)" if _fast else ""))
     print(f"[Debug] Analysis https://vk.com/id{_user_id} started!")
 
@@ -1061,10 +716,10 @@ def command_analyse(_user_id: int, _peer_id: int, _arguments: list) -> NoReturn:
     _analyse_results = _analyse_user(_user_id, _fast)
 
     # Results.
-    api_send_message(_peer_id, f"{_analyse_format_results(_analyse_results, _fast)}")
+    vk.api_messages_send(_peer_id, f"{_analyse_format_results(_analyse_results, _fast)}")
 
     # End message.
-    api_send_message(_peer_id,
+    vk.api_messages_send(_peer_id,
                      f"[Анализатор] Анализ @id{_user_id}(профиля) закончен! Потрачено: {int(time() - _start_time)}с!")
     print(f"[Debug] Analysis https://vk.com/id{_user_id} completed! Passed {int(time() - _start_time)}s!")
 
@@ -1076,7 +731,7 @@ def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list
         # If not enabled.
 
         # Error.
-        return api_send_message(_peer_id, f"[Анализатор] Работа с номерами отключена, включите работу в модуле phone.")
+        return vk.api_messages_send(_peer_id, f"[Анализатор] Работа с номерами отключена, включите работу в модуле phone.")
 
     if len(_arguments) > 0:
         # If argument.
@@ -1085,13 +740,13 @@ def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list
         _phone_number = _arguments[0]
     else:
         # Error.
-        return api_send_message(_peer_id, f"[Анализатор] Укажите номер телефона для анализа!")
+        return vk.api_messages_send(_peer_id, f"[Анализатор] Укажите номер телефона для анализа!")
 
     # Converting phone number.
     try:
         _phone_number = int(_phone_number)
     except (ValueError, TypeError):
-        return api_send_message(_peer_id, f"[Анализатор] Не корректный номер телефона!")
+        return vk.api_messages_send(_peer_id, f"[Анализатор] Не корректный номер телефона!")
 
     # Getting phone number data.
     _result = phone.lookup(_phone_number)
@@ -1100,11 +755,11 @@ def command_validate_phone_number(_user_id: int, _peer_id: int, _arguments: list
         # If all ok.
 
         # Success.
-        return api_send_message(_peer_id,
+        return vk.api_messages_send(_peer_id,
                                 f"[Анализатор] Страна: {_result['country_name']},\n Локация: {_result['location']},\n Оператор: {_result['carrier']},\n")
     else:
         # Error.
-        return api_send_message(_peer_id, f"[Анализатор] Не удалось найти ничего об этом номере!")
+        return vk.api_messages_send(_peer_id, f"[Анализатор] Не удалось найти ничего об этом номере!")
 
 
 def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> int:
@@ -1131,7 +786,7 @@ def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> int:
             # If not star.
 
             # Method.
-            _result: any = eval(f"api_method_safe({_source})")
+            _result: any = eval(f"method_safe({_source})")
     except Exception as _exception:
         # If error.
 
@@ -1139,7 +794,7 @@ def command_api_method(_user_id: int, _peer_id: int, _arguments: list) -> int:
         _result = str(_exception)
 
     # Returning.
-    return api_send_message(_peer_id, f"[Анализатор] Результат - {_result}!")
+    return vk.api_messages_send(_peer_id, f"[Анализатор] Результат - {_result}!")
 
 
 def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> int:
@@ -1151,9 +806,6 @@ def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> int:
     _sleep_time_min = 3
     _sleep_time_max = 10
 
-    # Getting current user id.
-    _current_user_id = api_current_user_id()
-
     # Message.
     print("[Debug][Flood] Started!")
 
@@ -1161,17 +813,17 @@ def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> int:
         for _ in range(_iteration_count):
             for _ in range(_iteration_size):
                 # Creating new chat with this user.
-                _new_chat = api_chat_create(_user_id, f"Flood {randint(-9999999, +9999999)}")
+                _new_chat = vk.api_messages_create_chat(_user_id, f"Flood {randint(-9999999, +9999999)}")
 
                 # Removing users.
-                api_chat_remove_user(_new_chat, _user_id)
-                api_chat_remove_user(_new_chat, _current_user_id)
+                vk.api_messages_remove_chat_user(_new_chat, _user_id)
+                vk.api_messages_remove_chat_user(_new_chat, vk.USER_ID)
 
                 # Sending message.
-                api_send_message(2000000000 + _new_chat, "Flood Script by @kirillzhosul!")
+                vk.api_messages_send(utils.chat_to_peer_id(_new_chat), "Flood Script by @kirillzhosul!")
 
                 # Deleting for self.
-                api_chat_delete_history(_new_chat)
+                vk.api_messages_delete_conversation(_new_chat, utils.chat_to_peer_id(_new_chat))
 
                 # Message.
                 print(f"[Debug][Flood] New chat {_new_chat} created!")
@@ -1182,7 +834,7 @@ def command_flood(_user_id: int, _peer_id: int, _arguments: list) -> int:
             # Sleeping.
             sleep(_sleep_time_max)
     except Exception as _exception:
-        return api_send_message(_peer_id, f"[Анализатор][Флуд] Ошибка: {_exception}")
+        return vk.api_messages_send(_peer_id, f"[Анализатор][Флуд] Ошибка: {_exception}")
 
 
 def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> int:
@@ -1192,13 +844,13 @@ def command_search_accounts(_user_id: int, _peer_id: int, _arguments: list) -> i
         # If arguments is not passed.
 
         # Returning.
-        return api_send_message(_peer_id, "[Анализатор][Аккаунты] Вы не указали ник для поиска!")
+        return vk.api_messages_send(_peer_id, "[Анализатор][Аккаунты] Вы не указали ник для поиска!")
 
     # Getting accounts.
     _accounts = [_account[0] + " = " + _account[1] for _account in accounts.search(_arguments[0])]
 
     # Returning.
-    return api_send_message(_peer_id,
+    return vk.api_messages_send(_peer_id,
                             f"[Анализатор][Аккаунты] Результат для ника {_arguments[0]}:\n" + ",\n".join(_accounts))
 
 
@@ -1206,7 +858,7 @@ def command_help(_user_id: int, _peer_id: int, _arguments: list) -> int:
     # Function for command help
 
     # Returning.
-    return api_send_message(_peer_id, "\n".join([
+    return vk.api_messages_send(_peer_id, "\n".join([
         "[Анализатор] Помощь:\n",
         "!анализ [id] [fastmode],",
         "Делает анализ профиля, если ID не указан, то анализ профиля чей ЛС, если после ID указать что либо то будет выбран быстрый режим,",
@@ -1245,7 +897,7 @@ def command_get_user_index(_user_id: int, _peer_id: int, _arguments: list) -> in
     # Function for command get user index.
 
     # Returning.
-    return api_send_message(_peer_id, f"[Анализатор] Индекс профиля: {_user_id},\nИндекс Переписки: {_peer_id}.")
+    return vk.api_messages_send(_peer_id, f"[Анализатор] Индекс профиля: {_user_id},\nИндекс Переписки: {_peer_id}.")
 
 
 def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> int:
@@ -1263,72 +915,59 @@ def command_groups_show_old(_user_id: int, _peer_id: int, _arguments: list) -> i
         _date_max = int(_arguments[0])
 
     # Message.
-    api_send_message(_peer_id, f"[Анализатор][Группы] Анализ старых групп начат!")
+    vk.api_messages_send(_peer_id, f"[Анализатор][Группы] Анализ старых групп начат!")
 
     # Getting groups.
-    _groups = api_get_groups(_user_id)
+    _groups = vk.api_groups_get(_user_id)
 
-    # Current.
-    _current = 0
+    if _groups is not None:
+        # Current.
+        _current = 0
 
-    for _group in _groups:
-        # For every group.
+        for _group in _groups:
+            # For every group.
 
-        # Message.
-        _current += 1
-        print(f"Group {_current} / {len(_groups)}")
+            # Message.
+            _current += 1
+            print(f"Group {_current} / {len(_groups)}")
 
-        try:
-            # Getting posts.
-            _posts = API.method("wall.get", {
-                "random_id": vk_api.utils.get_random_id(),
-                "owner_id": -_group["id"],
-                "count": 10
-            })["items"]
-        except Exception:
-            # If error.
+            _posts = vk.api_wall_get(-_group["id"])
 
-            # Banned.
-            _groups_ban.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
-            continue
+            if len(_posts) == 0:
+                # If no posts.
 
-        if len(_posts) == 0:
-            # If no posts.
+                # Banned.
+                _groups_ban.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
+                continue
 
-            # Banned.
-            _groups_ban.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
-            continue
+            # Date max iteration.
+            _date_max_ = 1970
 
-        # Date max iteration.
-        _date_max_ = 1970
+            for _post in _posts:
+                # For every post.
 
-        for _post in _posts:
-            # For every post.
+                # Getting date.
+                _date = int(datetime.datetime.fromtimestamp(_post["date"]).strftime('%Y-%m-%d %H:%M:%S')[:4])
 
-            # Getting date.
-            _date = int(datetime.datetime.fromtimestamp(_post["date"]).strftime('%Y-%m-%d %H:%M:%S')[:4])
+                if _date > _date_max_:
+                    # If new biggest.
 
-            if _date > _date_max_:
-                # If new biggest.
+                    # Setting.
+                    _date_max_ = _date
+            if _date_max_ < _date_max:
+                # If old.
 
-                # Setting.
-                _date_max_ = _date
-        if _date_max_ < _date_max:
-            # If old.
+                # Old.
+                _groups_old.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
 
-            # Old.
-            _groups_old.append(utils.get_group_mention(_group["screen_name"], _group["name"]))
+        # Formatting.
+        _groups_old = ", ".join(_groups_old)
+        _groups_ban = ", ".join(_groups_ban)
 
-    # Formatting.
-    _groups_old = ", ".join(_groups_old)
-    _groups_ban = ", ".join(_groups_ban)
-
-    # Returning.
-    return api_send_message(_peer_id, f"[Анализатор][Группы]\nСтарые (до {_date_max}):\n{_groups_old},\n Удалены или в бане или пустые:\n{_groups_ban}.")
-
-
-# Connecting to the api.
-API = vk_api.VkApi(token=getenv("VK_USER_TOKEN"))
+        # Returning.
+        return vk.api_messages_send(_peer_id, f"[Анализатор][Группы]\nСтарые (до {_date_max}):\n{_groups_old},\n Удалены или в бане или пустые:\n{_groups_ban}.")
+    else:
+        return vk.api_messages_send(_peer_id, f"[Анализатор][Группы]\nНе удалось получить группы!")
 
 # Commands.
 COMMANDS = {
@@ -1342,8 +981,26 @@ COMMANDS = {
     "!индекс": command_get_user_index,
 }
 
-# Message.
-print("[Debug] Launched!")
+if __name__ == "__main__":
+    # Entry point.
 
-# Starting listener.
-api_longpoll_listener(message_handler)
+    # Message.
+    print("[Debug] Launched!")
+
+    # Connecting to VK API.
+    vk.connect()
+
+    if vk.is_connected():
+        # If connected.
+
+        # Adding handler.
+        vk.handler_add(message_handler)
+
+        # If connected.
+        print("[Debug] Connected, starting listening!")
+
+        # Starting listening.
+        vk.listen()
+    else:
+        # If not connected.
+        print("[Debug] Connection disallowed!")
