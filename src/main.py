@@ -140,8 +140,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
             # Getting counters.
             _counters = _friend_data["counters"]
 
-            if _friend_data["last_name"] == _current_user["last_name"] or _friend_data["last_name"] + "а" == \
-                    _current_user["last_name"] or _friend_data["last_name"] == _current_user["last_name"] + "а":
+            if utils.is_namesakes(_current_user["last_name"], _friend_data["last_name"]):
                 # If namesakes.
 
                 # Formatting user.
@@ -227,8 +226,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 # Adding likes.
                 _analyse_results["user_wall_comments_likes"] += _comment_likes
 
-                if _comment_creator_last_name == _current_user["last_name"] or _comment_creator_last_name + "а" == \
-                        _current_user["last_name"] or _comment_creator_last_name == _current_user["last_name"] + "а":
+                if utils.is_namesakes(_current_user["last_name"], _comment_creator_last_name):
                     # If namesakes.
 
                     if _comment_creator_id != _user_id and \
@@ -247,9 +245,7 @@ def _analyse_user(_user_id: int, _fast: bool) -> dict:
                 # Formatting user.
                 _user_formatted = utils.get_user_mention(_user["id"], _user["first_name"], _user["last_name"])
 
-                if _user["last_name"] == _current_user["last_name"] or \
-                        _user["last_name"] + "а" == _current_user["last_name"] or \
-                        _user["last_name"] == _current_user["last_name"] + "а":
+                if utils.is_namesakes(_current_user["last_name"], _user["last_name"]):
                     # If namesakes.
 
                     if str(_user["id"]) != str(_user_id) and \

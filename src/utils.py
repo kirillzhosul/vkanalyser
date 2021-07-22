@@ -31,6 +31,22 @@ def chat_to_peer_id(_chat_id: int) -> int:
     return 2000000000 + _chat_id
 
 
+def is_namesakes(_last_name_a, _last_name_b):
+    # Function that checks is namesakes or not by last name.
+
+    if _last_name_a == _last_name_b:
+        # If last name equals (Дуров == Дуров)
+        return True
+
+    if _last_name_a + "а" == _last_name_b:
+        # Man to Woman (Дуров[а] == Дурова)
+        return True
+
+    if _last_name_a == _last_name_b + "а":
+        # Woman to Man (Дурова == Дуров[а])
+        return True
+
+
 def chunks(_list: list, _size: int) -> list:
     # Function that chunks list.
 
