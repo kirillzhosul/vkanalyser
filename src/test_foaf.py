@@ -59,15 +59,15 @@ class Test(TestCase):
         # Testing foaf.ProfileState enum.
 
         # Checking fields.
-        self.assertEquals(foaf.ProfileState.active, foaf.ProfileState["active"])
-        self.assertEquals(foaf.ProfileState.banned, foaf.ProfileState["banned"])
-        self.assertEquals(foaf.ProfileState.deactivated, foaf.ProfileState["deactivated"])
-        self.assertEquals(foaf.ProfileState.deleted, foaf.ProfileState["deleted"])
-        self.assertEquals(foaf.ProfileState.verified, foaf.ProfileState["verified"])
+        self.assertEqual(foaf.ProfileState.active, foaf.ProfileState["active"])
+        self.assertEqual(foaf.ProfileState.banned, foaf.ProfileState["banned"])
+        self.assertEqual(foaf.ProfileState.deactivated, foaf.ProfileState["deactivated"])
+        self.assertEqual(foaf.ProfileState.deleted, foaf.ProfileState["deleted"])
+        self.assertEqual(foaf.ProfileState.verified, foaf.ProfileState["verified"])
 
     def test_profile_access(self):
         # Testing foaf.ProfileAccess enum.
 
         # Checking fields.
-        self.assertEquals(foaf.ProfileAccess.disallowed, foaf.ProfileAccess["disallowed"])
-        self.assertEquals(foaf.ProfileAccess.allowed, foaf.ProfileAccess["allowed"])
+        self.assertEqual(foaf.ProfileAccess.disallowed, foaf.ProfileAccess["disallowed"])
+        self.assertEqual(foaf.ProfileAccess.allowed, foaf.ProfileAccess["allowed"])
