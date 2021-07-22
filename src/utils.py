@@ -4,11 +4,11 @@
 # Functions.
 
 
-def get_user_mention(_index: int, _first_name: str, _last_name: str) -> str:
+def get_user_mention(_index: int, _first_name: str, _last_name: str = "") -> str:
     # Function that returns vk mention for user.
 
     # Returning formatted.
-    return f"@id{_index}({_first_name} {_last_name})"
+    return f"@id{_index}({_first_name}{' ' if _last_name != '' else ''}{_last_name})"
 
 
 def get_group_mention(_screen_name: str, _group_name: str) -> str:

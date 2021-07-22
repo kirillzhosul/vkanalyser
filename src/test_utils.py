@@ -22,8 +22,8 @@ class Test(TestCase):
         # Default.
         self.assertEqual(utils.get_user_mention(1, "FName", "LName"), "@id1(FName LName)")
 
-        # Blank (There is anyway should be space, no worry about that).
-        self.assertEqual(utils.get_user_mention(0, "", ""), "@id0( )")
+        # Blank.
+        self.assertEqual(utils.get_user_mention(0, "", ""), "@id0()")
 
     def test_chat_to_peer_id(self):
         # Testing utils.chat_to_peer_id()

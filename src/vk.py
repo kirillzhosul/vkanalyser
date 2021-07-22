@@ -281,30 +281,6 @@ def api_friends_get(_user_id: int) -> typing.Optional[list]:
     return None
 
 
-# messages.removeChatUser
-def api_messages_remove_chat_user(_chat_id: int, _user_id: int) -> typing.Optional[int]:
-    # Method messages.removeChatUser.
-    # Removes user from chat.
-
-    # Removing user.
-    return method_safe("messages.removeChatUser", {
-        "chat_id": _chat_id,
-        "user_id": _user_id
-    })
-
-
-# messages.deleteConversation
-def api_messages_delete_conversation(_chat_id: int, _peer_id: int) -> bool:
-    # Method messages.deleteConversation.
-    # Deletes chat history.
-
-    # Deleting.
-    return method_safe("messages.deleteConversation", {
-        "user_id": _chat_id,
-        "peer_id": _peer_id
-    }) == 1
-
-
 # messages.send
 def api_messages_send(_peer_id: int, _message: str) -> typing.Optional[int]:
     # Method messages.send.
@@ -314,18 +290,6 @@ def api_messages_send(_peer_id: int, _message: str) -> typing.Optional[int]:
     return method_safe("messages.send", {
         "peer_id": _peer_id,
         "message": _message
-    })
-
-
-# messages.createChat
-def api_messages_create_chat(_user_ids: typing.Union[int, list[int]], _title: str) -> int:
-    # Method messages.createChat.
-    # Creates new chat.
-
-    # Creating chat.
-    return API.method("messages.createChat", {
-        "user_ids": _user_ids,
-        "title": _title
     })
 
 
@@ -401,14 +365,28 @@ def api_likes_get_list(_owner_id: int, _item_id: int, _item_type: str,
 
 
 # wall.get
-def api_wall_get(_user_id: int) -> list[dict]:
-    # Method likes.getList.
+def api_wall_get(_user_id: int, _count: typing.Optional[int] = None) -> typing.Optional[list[dict]]:
+    # Method wall.get.
     # Returns wall.
 
-    # Returning.
-    return method_exceed_limit("wall.get", 100, {
-        "owner_id": _user_id,
-    })
+    if _count is None:
+        # If get all.
+
+        # Returning.
+        return method_exceed_limit("wall.get", 100, {
+            "owner_id": _user_id,
+        })
+    else:
+        # If not all.
+
+        # Getting result.
+        _result = method_safe("wall.get", {
+            "owner_id": _user_id,
+            "count": _count
+        })
+
+        # Returning.
+        return _result["items"] if _result is not None else None
 
 
 # wall.getComments
