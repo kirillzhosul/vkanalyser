@@ -20,4 +20,11 @@ jobs:
         pip install pylint
     - name: Analysing the code with pylint
       run: |
-        pylint `ls -R|grep .py$|xargs` --exit-zero
+        pylint "src/main.py" --exit-zero
+        pylint "src/phone.py" --exit-zero
+        pylint "src/utils.py" --exit-zero
+        pylint "src/vk.py" --exit-zero
+        pylint "src/foaf.py" --exit-zero
+        pylint "src/commands.py" --exit-zero
+        pylint "src/analyse.py" --exit-zero
+        pylint "src/accounts.py" --exit-zero
